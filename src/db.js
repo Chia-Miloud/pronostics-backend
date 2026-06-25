@@ -1,8 +1,11 @@
 const { Pool } = require('pg');
 
+// Clever Cloud utilise des certificats auto-signés — on doit désactiver la vérification
+// NODE_TLS_REJECT_UNAUTHORIZED=0 est la solution la plus fiable pour Clever Cloud
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes('postgresql') ? { rejectUnauthorized: false } : false,
 });
 
 const query = (text, params) => pool.query(text, params);
@@ -58,17 +61,6 @@ const initDB = async () => {
       raisons JSONB,
       trap_score INTEGER,
       trap_raison TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS password_resets (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
-      token TEXT NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      used BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
