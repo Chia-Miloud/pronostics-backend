@@ -5,7 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || process.env.CC_APP_PORT || 8080;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 const allowedOrigins = (process.env.FRONTEND_URL || 'https://pronostics.coupedumonde.ai')
@@ -41,7 +41,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }
 // ─── INIT DB + START ──────────────────────────────────────────────────────────
 const { initDB } = require('./db');
 initDB().then(() => {
-  app.listen(PORT, () => console.log(`🚀 Pronostics API démarrée sur le port ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Pronostics API démarrée sur le port ${PORT}`));
 }).catch(err => {
   console.error('Erreur init DB:', err);
   process.exit(1);
