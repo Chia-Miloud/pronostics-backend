@@ -1,23 +1,29 @@
 const router = require('express').Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { query } = require('../db');
 const { authRequired } = require('../middleware/auth');
 
+const getStripe = () => {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  return require('stripe')(process.env.STRIPE_SECRET_KEY);
+};
+
 const PLANS = {
-  ai_plus: process.env.STRIPE_AI_PLUS_PRICE_ID,
-  ai_premium: process.env.STRIPE_AI_PREMIUM_PRICE_ID,
+  ai_plus: () => process.env.STRIPE_AI_PLUS_PRICE_ID,
+  ai_premium: () => process.env.STRIPE_AI_PREMIUM_PRICE_ID,
 };
 
 // ─── CRÉER SESSION DE PAIEMENT ────────────────────────────────────────────────
 router.post('/checkout', authRequired, async (req, res) => {
   try {
-    const { plan } = req.body;
-    if (!PLANS[plan]) return res.status(400).json({ error: 'Plan invalide' });
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Paiement non configuré' });
 
-    const priceId = PLANS[plan];
+    const { plan } = req.body;
+    const priceId = PLANS[plan]?.();
+    if (!priceId) return res.status(400).json({ error: 'Plan invalide' });
+
     const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] || 'https://pronostics.coupedumonde.ai';
 
-    // Créer ou récupérer le customer Stripe
     let customerId = req.user.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -53,6 +59,9 @@ router.get('/status', authRequired, async (req, res) => {
 // ─── ANNULER ABONNEMENT ───────────────────────────────────────────────────────
 router.post('/cancel', authRequired, async (req, res) => {
   try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Paiement non configuré' });
+
     const r = await query('SELECT stripe_subscription_id FROM users WHERE id = $1', [req.user.id]);
     const subId = r.rows[0]?.stripe_subscription_id;
     if (!subId) return res.status(400).json({ error: 'Aucun abonnement actif' });

@@ -1,8 +1,15 @@
 const router = require('express').Router();
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { query } = require('../db');
 
+const getStripe = () => {
+  if (!process.env.STRIPE_SECRET_KEY) return null;
+  return require('stripe')(process.env.STRIPE_SECRET_KEY);
+};
+
 router.post('/', async (req, res) => {
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: 'Stripe non configuré' });
+
   const sig = req.headers['stripe-signature'];
   let event;
 
