@@ -175,7 +175,7 @@ const generateMissingPronostics = async () => {
         SELECT 1 FROM pronostics p WHERE p.match_id = m.id AND p.user_id IS NULL
       )
       ORDER BY m.date_heure DESC
-      LIMIT 5
+      LIMIT 20
     `);
 
     for (const match of r.rows) {
@@ -199,8 +199,8 @@ const generateMissingPronostics = async () => {
   }
 };
 
-// Lancer la génération au démarrage puis toutes les heures
-setTimeout(generateMissingPronostics, 10000);
-setInterval(generateMissingPronostics, 60 * 60 * 1000);
+// Lancer au démarrage (après 15s) puis une fois par jour
+setTimeout(generateMissingPronostics, 15000);
+setInterval(generateMissingPronostics, 24 * 60 * 60 * 1000);
 
 module.exports = router;
