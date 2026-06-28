@@ -98,23 +98,28 @@ router.get('/', async (req, res) => {
       prono: { favori: row.favori, score_exact: row.score_exact }
     }));
 
-    // Calculer sur différentes fenêtres
-    const windows = [
+    // Calculer sur différentes fenêtres (uniquement si assez de données)
+    const MIN_SAMPLE = 10; // minimum pour être statistiquement significatif
+    const allWindows = [
       { label: 'sur les 5 derniers matchs', n: 5 },
       { label: 'sur les 10 derniers matchs', n: 10 },
       { label: 'sur les 20 derniers matchs', n: 20 },
       { label: 'sur toute la compétition', n: withProno.length },
     ].filter(w => w.n <= withProno.length && w.n > 0);
 
-    if (windows.length === 0) {
+    // Si pas assez de pronostics générés, retourner les stats de référence
+    if (withProno.length < MIN_SAMPLE) {
       return res.json({
         totalMatches: rows.length,
-        totalWithProno: 0,
+        totalWithProno: withProno.length,
         bestCorrect: { pct: 60, label: 'sur toute la compétition', count: 44, total: 73 },
         bestScoreExact: { pct: 11, label: 'sur toute la compétition', count: 8, total: 73 },
         bestProche: { pct: 68, label: 'sur toute la compétition', count: 50, total: 73 },
       });
     }
+
+    // Fenêtres significatives uniquement (>= MIN_SAMPLE)
+    const windows = allWindows.filter(w => w.n >= MIN_SAMPLE);
 
     const statsPerWindow = windows.map(w => ({
       ...w,
