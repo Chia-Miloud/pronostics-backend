@@ -151,8 +151,8 @@ router.get('/:matchId', authOptional, async (req, res) => {
 
     res.json(result);
   } catch (err) {
-    console.error('pronostic error:', err.message);
-    res.status(500).json({ error: 'Erreur lors de la génération du pronostic' });
+    console.error('pronostic error:', err.message, err.stack?.split('\n')[1]);
+    res.status(500).json({ error: 'Erreur lors de la génération du pronostic', detail: err.message });
   }
 });
 
