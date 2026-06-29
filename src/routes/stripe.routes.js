@@ -35,11 +35,22 @@ router.post('/', async (req, res) => {
         const userId = session.metadata?.user_id;
         const plan = session.metadata?.plan;
         if (userId && plan) {
-          await query(
-            'UPDATE users SET plan = $1, stripe_subscription_id = $2 WHERE id = $3',
-            [plan, session.subscription, userId]
-          );
-          console.log(`✅ Plan activé: user ${userId} → ${plan}`);
+          // Hiérarchie des plans : free < ai_plus < ai_premium
+          const PLAN_RANK = { free: 0, ai_plus: 1, ai_premium: 2 };
+          const currentUser = await query('SELECT plan FROM users WHERE id = $1', [userId]);
+          const currentPlan = currentUser.rows[0]?.plan || 'free';
+          const newRank = PLAN_RANK[plan] ?? 0;
+          const currentRank = PLAN_RANK[currentPlan] ?? 0;
+          // Mettre à jour seulement si le nouveau plan est supérieur ou égal
+          if (newRank >= currentRank) {
+            await query(
+              'UPDATE users SET plan = $1, stripe_subscription_id = $2 WHERE id = $3',
+              [plan, session.subscription, userId]
+            );
+            console.log(`✅ Plan activé: user ${userId} → ${plan}`);
+          } else {
+            console.log(`ℹ️ Plan ignoré (rétrogradation bloquée): user ${userId} ${currentPlan} → ${plan}`);
+          }
         }
         break;
       }
