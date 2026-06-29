@@ -93,7 +93,7 @@ router.get('/:matchId', authOptional, async (req, res) => {
 
     // Récupérer le match — CORRECTION: utiliser competition_nom (pas competition)
     const matchR = await query(
-      `SELECT id, equipe1, equipe2, date_heure, phase, competition_nom, statut, score_p1, score_p2
+      `SELECT id, equipe1, equipe2, date_heure, phase, competition AS competition_nom, statut, score_p1, score_p2
        FROM matches WHERE id = $1`, [matchId]
     );
     if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
@@ -171,7 +171,7 @@ router.post('/live/:matchId/chat', authRequired, async (req, res) => {
 
     // Récupérer le match
     const matchR = await query(
-      `SELECT id, equipe1, equipe2, statut, score_p1, score_p2, phase, competition_nom, date_heure
+      `SELECT id, equipe1, equipe2, statut, score_p1, score_p2, phase, competition AS competition_nom, date_heure
        FROM matches WHERE id = $1`, [matchId]
     );
     if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
