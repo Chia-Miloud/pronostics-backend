@@ -111,8 +111,26 @@ const autoSync = async () => {
   }
 };
 
-// Lancer auto-sync au démarrage puis toutes les heures
-setTimeout(autoSync, 5000);
-setInterval(autoSync, 60 * 60 * 1000);
+// Sync intelligente : toutes les 30s si match en direct, sinon toutes les 5 min
+let syncInterval = null;
+
+const scheduleSyncLoop = async () => {
+  await autoSync();
+  // Vérifier si un match est en direct
+  try {
+    const r = await query("SELECT COUNT(*) FROM matches WHERE statut IN ('IN_PLAY','PAUSED')");
+    const liveCount = parseInt(r.rows[0].count);
+    const nextDelay = liveCount > 0 ? 30 * 1000 : 5 * 60 * 1000; // 30s si live, 5min sinon
+    if (liveCount > 0) {
+      console.log(`🔴 ${liveCount} match(s) en direct — sync toutes les 30s`);
+    }
+    setTimeout(scheduleSyncLoop, nextDelay);
+  } catch {
+    setTimeout(scheduleSyncLoop, 60 * 1000);
+  }
+};
+
+// Démarrer la boucle de sync au boot
+setTimeout(scheduleSyncLoop, 5000);
 
 module.exports = router;
