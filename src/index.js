@@ -25,7 +25,7 @@ app.use(morgan('combined'));
 
 // Webhook Stripe (raw body avant express.json)
 const stripeRoutes = require('./routes/stripe.routes');
-app.use('/api/webhook', express.raw({ type: 'application/json' }), stripeRoutes);
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }), stripeRoutes);
 
 app.use(express.json());
 
