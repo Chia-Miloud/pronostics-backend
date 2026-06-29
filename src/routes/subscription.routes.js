@@ -8,26 +8,37 @@ const getStripe = () => {
 };
 
 const PLANS = {
-  ai_plus: () => process.env.STRIPE_AI_PLUS_PRICE_ID,
-  ai_premium: () => process.env.STRIPE_AI_PREMIUM_PRICE_ID,
+  ai_plus: {
+    priceId: () => process.env.STRIPE_AI_PLUS_PRICE_ID || 'price_1Tnk6MPNX6Vp60cTwSuCJjqo',
+    name: 'AI Plus',
+  },
+  ai_premium: {
+    priceId: () => process.env.STRIPE_AI_PREMIUM_PRICE_ID || 'price_1Tnk7MPNX6Vp60cTLAuAwYkO',
+    name: 'AI Premium',
+  },
 };
 
-// ─── CRÉER SESSION DE PAIEMENT ────────────────────────────────────────────────
+const getFrontendUrl = () =>
+  (process.env.FRONTEND_URL || 'https://pronostics.coupedumonde.ai').split(',')[0].trim();
+
+// ─── POST /api/subscription/checkout ─────────────────────────────────────────
 router.post('/checkout', authRequired, async (req, res) => {
   try {
     const stripe = getStripe();
     if (!stripe) return res.status(503).json({ error: 'Paiement non configuré' });
 
     const { plan } = req.body;
-    const priceId = PLANS[plan]?.();
-    if (!priceId) return res.status(400).json({ error: 'Plan invalide' });
+    const planConfig = PLANS[plan];
+    if (!planConfig) return res.status(400).json({ error: 'Plan invalide' });
 
-    const frontendUrl = process.env.FRONTEND_URL?.split(',')[0] || 'https://pronostics.coupedumonde.ai';
+    const frontendUrl = getFrontendUrl();
 
+    // Récupérer ou créer le customer Stripe
     let customerId = req.user.stripe_customer_id;
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: req.user.email,
+        name: req.user.pseudo,
         metadata: { user_id: String(req.user.id) },
       });
       customerId = customer.id;
@@ -38,10 +49,13 @@ router.post('/checkout', authRequired, async (req, res) => {
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${frontendUrl}/?subscription=success`,
-      cancel_url: `${frontendUrl}/abonnement`,
+      line_items: [{ price: planConfig.priceId(), quantity: 1 }],
+      success_url: `${frontendUrl}/abonnement?success=true&plan=${plan}`,
+      cancel_url: `${frontendUrl}/abonnement?canceled=true`,
       metadata: { user_id: String(req.user.id), plan },
+      subscription_data: {
+        metadata: { user_id: String(req.user.id), plan },
+      },
     });
 
     res.json({ url: session.url });
@@ -51,12 +65,46 @@ router.post('/checkout', authRequired, async (req, res) => {
   }
 });
 
-// ─── STATUT ABONNEMENT ────────────────────────────────────────────────────────
-router.get('/status', authRequired, async (req, res) => {
-  res.json({ plan: req.user.plan });
+// ─── POST /api/subscription/portal ───────────────────────────────────────────
+// Portail Client Stripe : gérer abonnement, factures, carte bancaire
+router.post('/portal', authRequired, async (req, res) => {
+  try {
+    const stripe = getStripe();
+    if (!stripe) return res.status(503).json({ error: 'Paiement non configuré' });
+
+    const customerId = req.user.stripe_customer_id;
+    if (!customerId) return res.status(400).json({ error: 'Aucun abonnement actif' });
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${getFrontendUrl()}/abonnement`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('portal error:', err.message);
+    res.status(500).json({ error: 'Erreur portail client' });
+  }
 });
 
-// ─── ANNULER ABONNEMENT ───────────────────────────────────────────────────────
+// ─── GET /api/subscription/status ────────────────────────────────────────────
+router.get('/status', authRequired, async (req, res) => {
+  try {
+    const r = await query(
+      'SELECT plan, stripe_subscription_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const user = r.rows[0];
+    res.json({
+      plan: user?.plan || 'free',
+      hasSubscription: !!user?.stripe_subscription_id,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur statut' });
+  }
+});
+
+// ─── POST /api/subscription/cancel ───────────────────────────────────────────
 router.post('/cancel', authRequired, async (req, res) => {
   try {
     const stripe = getStripe();
@@ -67,7 +115,7 @@ router.post('/cancel', authRequired, async (req, res) => {
     if (!subId) return res.status(400).json({ error: 'Aucun abonnement actif' });
 
     await stripe.subscriptions.update(subId, { cancel_at_period_end: true });
-    res.json({ message: 'Abonnement annulé à la fin de la période' });
+    res.json({ message: 'Abonnement annulé à la fin de la période en cours' });
   } catch (err) {
     res.status(500).json({ error: 'Erreur annulation' });
   }
