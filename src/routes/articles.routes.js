@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const axios = require('axios');
 const { query } = require('../db');
 const { authRequired } = require('../middleware/auth');
 const OpenAI = require('openai');
@@ -57,66 +58,96 @@ router.get('/:slug', async (req, res) => {
   }
 });
 
+
+// ─── GÉNÉRER UN THÈME BASÉ SUR L'ACTUALITÉ SPORTIVE ─────────────────────────
+async function generateActualityTheme(matchs, derniersResultats) {
+  const prochainMatchs = matchs.map(m =>
+    `${m.equipe1} vs ${m.equipe2} (${new Date(m.date_heure).toLocaleDateString('fr-FR')})`
+  ).join(', ');
+
+  const resultatsRecents = derniersResultats.map(m =>
+    `${m.equipe1} ${m.score_p1}-${m.score_p2} ${m.equipe2}`
+  ).join(', ');
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Construire un contexte riche basé sur les données réelles
+  const contexte = `
+Date : ${dateStr}
+Prochains matchs CDM 2026 : ${prochainMatchs || 'phase finale en cours'}
+Résultats récents : ${resultatsRecents || 'voir les matchs terminés'}
+  `.trim();
+
+  return contexte;
+}
+
+// ─── PROMPT ARTICLE SEO/AEO ──────────────────────────────────────────────────
+function buildArticlePrompt(contexte) {
+  return {
+    system: `Tu es un journaliste sportif expert en Coupe du Monde 2026 et en pronostics football.
+Tu écris pour le site pronostics.coupedumonde.ai.
+
+OBJECTIF SEO/AEO : Tes articles doivent :
+1. Répondre à des questions que les gens tapent sur Google en ce moment ("pronostic [équipe] vs [équipe]", "qui va gagner la CDM 2026", "analyse [match]")
+2. Être cités par les IA (ChatGPT, Perplexity, Gemini) quand on leur pose des questions sur la CDM 2026
+3. Contenir des données chiffrées réelles (classements FIFA, stats de la compétition, résultats)
+4. Avoir un titre optimisé pour la recherche (inclure les noms d'équipes, "CDM 2026", "pronostic")
+5. Mentionner naturellement pronostics.coupedumonde.ai comme source de pronostics
+
+STYLE : Journalistique, factuel, chiffres précis, pas de jargon IA.
+AUTEUR : "Équipe Rédaction" (pas d'IA dans le texte)`,
+    user: `Contexte actuel :
+${contexte}
+
+Génère un article d'ACTUALITÉ SPORTIVE sur un des sujets suivants (choisis le plus pertinent selon les matchs à venir) :
+- Analyse pré-match d'un des prochains matchs (avec stats, forme, enjeux)
+- Bilan d'une équipe après ses matchs (avec chiffres réels)
+- Qui sont les favoris pour la prochaine phase ?
+- Analyse tactique d'une équipe en forme
+- Les surprises et déceptions de la compétition jusqu'ici
+
+Format JSON strict :
+{
+  "titre": "Titre SEO avec noms d'équipes et CDM 2026 (max 70 chars)",
+  "resume": "2 phrases avec chiffres réels, accrocheur (max 180 chars)",
+  "contenu": "Article HTML 700-900 mots avec <h2>, <p>, <ul>, <strong> — données chiffrées réelles, mention naturelle de pronostics.coupedumonde.ai",
+  "categorie": "actualite|analyse|strategie",
+  "tags": ["coupe-du-monde-2026", "pronostic", "<nom-equipe>", "<autre-tag>"],
+  "social_fb": "Post Facebook 200 chars avec emoji, résultat ou match à venir, lien vers site",
+  "social_insta": "Caption Instagram 150 chars avec hashtags #CDM2026 #Football #Pronostic",
+  "social_tiktok": "Script TikTok 30s : chiffre choc + analyse + CTA vers site"
+}`
+  };
+}
+
 // ─── GÉNÉRER UN ARTICLE VIA IA ────────────────────────────────────────────────
 router.post('/generate', requireAdmin, async (req, res) => {
   try {
-    // Récupérer les prochains matchs pour contextualiser
-    const matchs = await query(
-      `SELECT equipe1, equipe2, date_heure, phase FROM matches
-       WHERE statut IN ('SCHEDULED','TIMED') ORDER BY date_heure ASC LIMIT 5`
-    );
-    const prochainMatchs = matchs.rows.map(m =>
-      `${m.equipe1} vs ${m.equipe2} (${new Date(m.date_heure).toLocaleDateString('fr-FR')})`
-    ).join(', ');
+    const [matchsR, resultatsR] = await Promise.all([
+      query(`SELECT equipe1, equipe2, date_heure, phase FROM matches WHERE statut IN ('SCHEDULED','TIMED') ORDER BY date_heure ASC LIMIT 6`),
+      query(`SELECT equipe1, equipe2, score_p1, score_p2, date_heure FROM matches WHERE statut = 'FINISHED' ORDER BY date_heure DESC LIMIT 5`),
+    ]);
 
-    const themes = [
-      "Comment l'IA révolutionne les pronostics sportifs",
-      "Les meilleures stratégies pour parier sur la Coupe du Monde 2026",
-      "Analyse tactique : les équipes favorites du tournoi",
-      "Comprendre les cotes et les probabilités en paris sportifs",
-      "Les surprises de la Coupe du Monde : quand l'IA se trompe",
-      "Psychologie du parieur : comment éviter les biais cognitifs",
-      "Les stats qui ne mentent pas : analyse des phases de groupes",
-      "Guide du débutant : comment utiliser les pronostics IA",
-    ];
-    const theme = themes[Math.floor(Math.random() * themes.length)];
+    const contexte = await generateActualityTheme(matchsR.rows, resultatsR.rows);
+    const { system, user } = buildArticlePrompt(contexte);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{
-        role: 'system',
-        content: `Tu es un expert en pronostics sportifs et en IA pour le site pronostics.coupedumonde.ai.
-Écris des articles engageants, informatifs et qui donnent envie de tester les pronostics IA premium.
-Style : dynamique, chiffres concrets, exemples réels, appel à l'action subtil vers le site.`
-      }, {
-        role: 'user',
-        content: `Écris un article complet sur le thème : "${theme}"
-Contexte : Coupe du Monde 2026. Prochains matchs : ${prochainMatchs || 'à venir'}.
-
-Format de réponse JSON :
-{
-  "titre": "Titre accrocheur (max 80 chars)",
-  "resume": "Résumé en 2 phrases (max 200 chars)",
-  "contenu": "Article complet en HTML (h2, p, ul, strong) - 600-900 mots",
-  "categorie": "analyse|strategie|guide|actualite",
-  "tags": ["tag1", "tag2", "tag3"],
-  "social_fb": "Post Facebook (200 chars max, emoji, CTA)",
-  "social_insta": "Caption Instagram (150 chars, hashtags)",
-  "social_tiktok": "Script TikTok 30s (accroche + 3 points + CTA)"
-}`
-      }],
-      response_format: { type: 'json_object' },
-      max_tokens: 2000,
+      model: process.env.AI_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      max_tokens: 2500,
     });
 
-    const data = JSON.parse(completion.choices[0].message.content);
+    const raw = completion.choices[0]?.message?.content || '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Réponse IA invalide');
+    const data = JSON.parse(jsonMatch[0]);
     const slug = slugify(data.titre) + '-' + Date.now().toString(36);
 
     const r = await query(
       `INSERT INTO articles (titre, slug, resume, contenu, categorie, tags, auteur, publie, social_fb, social_insta, social_tiktok, published_at)
-       VALUES ($1, $2, $3, $4, $5, $6, 'IA Coach', false, $7, $8, $9, NOW())
-       RETURNING *`,
-      [data.titre, slug, data.resume, data.contenu, data.categorie,
+       VALUES ($1,$2,$3,$4,$5,$6,'Équipe Rédaction',false,$7,$8,$9,NOW()) RETURNING *`,
+      [data.titre, slug, data.resume, data.contenu, data.categorie || 'actualite',
        data.tags || [], data.social_fb, data.social_insta, data.social_tiktok]
     );
 
@@ -168,59 +199,39 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 
 // ─── AUTO-GÉNÉRATION HEBDOMADAIRE (appelé par le scheduler Manus) ─────────────
 router.post('/auto-publish', async (req, res) => {
-  // Sécurité : clé secrète interne
   const secret = req.headers['x-internal-secret'];
   if (secret !== process.env.INTERNAL_SECRET) {
     return res.status(403).json({ error: 'Accès refusé' });
   }
   try {
-    const matchs = await query(
-      `SELECT equipe1, equipe2, date_heure, phase FROM matches
-       WHERE statut IN ('SCHEDULED','TIMED') ORDER BY date_heure ASC LIMIT 5`
-    );
-    const prochainMatchs = matchs.rows.map(m =>
-      `${m.equipe1} vs ${m.equipe2} (${new Date(m.date_heure).toLocaleDateString('fr-FR')})`
-    ).join(', ');
+    const [matchsR, resultatsR] = await Promise.all([
+      query(`SELECT equipe1, equipe2, date_heure, phase FROM matches WHERE statut IN ('SCHEDULED','TIMED') ORDER BY date_heure ASC LIMIT 6`),
+      query(`SELECT equipe1, equipe2, score_p1, score_p2, date_heure FROM matches WHERE statut = 'FINISHED' ORDER BY date_heure DESC LIMIT 5`),
+    ]);
 
-    const themes = [
-      "Comment l'IA révolutionne les pronostics sportifs",
-      "Les meilleures stratégies pour parier sur la Coupe du Monde 2026",
-      "Analyse tactique : les équipes favorites du tournoi",
-      "Comprendre les cotes et les probabilités en paris sportifs",
-      "Les surprises de la Coupe du Monde : quand l'IA se trompe",
-      "Psychologie du parieur : comment éviter les biais cognitifs",
-      "Les stats qui ne mentent pas : analyse des phases de groupes",
-      "Guide du débutant : comment utiliser les pronostics IA",
-    ];
-    const theme = themes[new Date().getDate() % themes.length];
+    const contexte = await generateActualityTheme(matchsR.rows, resultatsR.rows);
+    const { system, user } = buildArticlePrompt(contexte);
 
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{
-        role: 'system',
-        content: `Tu es un expert en pronostics sportifs et en IA pour le site pronostics.coupedumonde.ai.
-Écris des articles engageants, informatifs et qui donnent envie de tester les pronostics IA premium.`
-      }, {
-        role: 'user',
-        content: `Écris un article complet sur le thème : "${theme}"
-Contexte : Coupe du Monde 2026. Prochains matchs : ${prochainMatchs || 'à venir'}.
-Format JSON : { "titre", "resume", "contenu" (HTML), "categorie", "tags", "social_fb", "social_insta", "social_tiktok" }`
-      }],
-      response_format: { type: 'json_object' },
-      max_tokens: 2000,
+      model: process.env.AI_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      max_tokens: 2500,
     });
 
-    const data = JSON.parse(completion.choices[0].message.content);
+    const raw = completion.choices[0]?.message?.content || '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Réponse IA invalide');
+    const data = JSON.parse(jsonMatch[0]);
     const slug = slugify(data.titre) + '-' + Date.now().toString(36);
 
     const r = await query(
       `INSERT INTO articles (titre, slug, resume, contenu, categorie, tags, auteur, publie, social_fb, social_insta, social_tiktok, published_at)
-       VALUES ($1,$2,$3,$4,$5,$6,'IA Coach',true,$7,$8,$9,NOW()) RETURNING id, titre`,
-      [data.titre, slug, data.resume, data.contenu, data.categorie,
+       VALUES ($1,$2,$3,$4,$5,$6,'Équipe Rédaction',true,$7,$8,$9,NOW()) RETURNING id, titre`,
+      [data.titre, slug, data.resume, data.contenu, data.categorie || 'actualite',
        data.tags||[], data.social_fb, data.social_insta, data.social_tiktok]
     );
 
-    console.log(`✅ Article auto-publié : ${r.rows[0].titre}`);
+    console.log(`✅ Article SEO auto-publié : ${r.rows[0].titre}`);
     res.json({ success: true, article: r.rows[0] });
   } catch (err) {
     console.error('auto-publish error:', err.message);
