@@ -65,6 +65,27 @@ const initDB = async () => {
     )
   `);
 
+  await query(`
+    CREATE TABLE IF NOT EXISTS articles (
+      id SERIAL PRIMARY KEY,
+      titre TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      resume TEXT,
+      contenu TEXT NOT NULL,
+      categorie TEXT DEFAULT 'analyse',
+      tags TEXT[],
+      image_url TEXT,
+      auteur TEXT DEFAULT 'IA Coach',
+      publie BOOLEAN DEFAULT false,
+      vues INTEGER DEFAULT 0,
+      social_fb TEXT,
+      social_insta TEXT,
+      social_tiktok TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      published_at TIMESTAMPTZ
+    )
+  `);
+
   console.log('✅ Base de données initialisée');
 };
 
