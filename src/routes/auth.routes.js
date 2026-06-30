@@ -71,4 +71,34 @@ router.get('/me', authRequired, async (req, res) => {
   }
 });
 
+// ─── MODIFIER PROFIL ─────────────────────────────────────────────────────────────────────────────────
+router.put('/profile', authRequired, async (req, res) => {
+  const { prenom, nom, telephone } = req.body;
+  try {
+    await query(
+      'UPDATE users SET prenom=$1, nom=$2, telephone=$3 WHERE id=$4',
+      [prenom, nom, telephone, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ─── CHANGER MOT DE PASSE ─────────────────────────────────────────────────────────────────────────────────
+router.put('/password', authRequired, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 8) return res.status(400).json({ error: 'Mot de passe trop court' });
+  try {
+    const r = await query('SELECT password_hash FROM users WHERE id=$1', [req.user.id]);
+    const valid = await bcrypt.compare(currentPassword, r.rows[0].password_hash);
+    if (!valid) return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+    const hash = await bcrypt.hash(newPassword, 12);
+    await query('UPDATE users SET password_hash=$1 WHERE id=$2', [hash, req.user.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;
