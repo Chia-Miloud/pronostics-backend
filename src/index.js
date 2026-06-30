@@ -35,6 +35,7 @@ app.use('/api/matches', require('./routes/matches.routes'));
 app.use('/api/pronostics', require('./routes/pronostics.routes'));
 app.use('/api/subscription', require('./routes/subscription.routes'));
 app.use('/api/stats', require('./routes/stats.routes'));
+app.use('/api/admin', require('./routes/admin.routes'));
 
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
