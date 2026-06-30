@@ -7,6 +7,9 @@ const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
+const { collectMatchData, formatDataForPrompt } = require('../services/footballData');
+const { query: dbQuery } = require('../db');
+
 const PLAN_FEATURES = {
   free:       { quota: 1, score_exact: false, analyse: false, live: false },
   ai_plus:    { quota: 999, score_exact: true, analyse: true, live: false },
@@ -29,51 +32,58 @@ async function callAI(prompt, maxTokens = 600) {
 }
 
 // ─── GÉNÉRER UN PRONOSTIC IA ──────────────────────────────────────────────────
-async function generatePronostic(match) {
+async function generatePronostic(match, allMatches) {
   const phase = match.phase || 'GROUP_STAGE';
   const isKnockout = ['LAST_32','LAST_16','QUARTER_FINAL','SEMI_FINAL','FINAL','THIRD_PLACE'].includes(phase);
-  const enjeu = isKnockout ? 'Match éliminatoire — pas de match nul possible en temps réglementaire' : 'Phase de groupes';
+  const enjeu = isKnockout ? 'Match éliminatoire — pas de prolongations en temps réglementaire' : 'Phase de groupes';
 
-  const prompt = `Tu es un analyste football expert de la Coupe du Monde 2026.
-Génère un pronostic ORIGINAL et UNIQUE pour ce match spécifique.
+  // Collecter les données réelles
+  let realData = '';
+  try {
+    const data = await collectMatchData(match, allMatches || []);
+    realData = formatDataForPrompt(data);
+  } catch(e) {
+    console.log('Données réelles non disponibles:', e.message);
+  }
+
+  const prompt = `Tu es un analyste football expert. Génère un pronostic précis basé sur les données réelles ci-dessous.
 
 MATCH : ${match.equipe1} vs ${match.equipe2}
 Phase : ${phase} | ${enjeu}
 Date : ${new Date(match.date_heure).toLocaleDateString('fr-FR')}
-
-INSTRUCTIONS IMPORTANTES :
-1. Analyse les forces réelles de ${match.equipe1} et ${match.equipe2} spécifiquement
-2. Les probabilités doivent refléter la réalité de CES deux équipes (pas des valeurs génériques)
-3. Le score exact doit être logique pour ce match précis (pas toujours 2-1)
+${realData}
+INSTRUCTIONS :
+1. Base-toi UNIQUEMENT sur les données réelles fournies ci-dessus
+2. Les probabilités doivent refléter la forme réelle des équipes
+3. Le score exact doit être cohérent avec les stats offensives/défensives
 4. score_confiance entre 52 et 85 selon la clarté du favori
 5. prob_p1 + prob_nul + prob_p2 = 100 exactement
-6. Varie les scores : 1-0, 2-0, 1-1, 3-1, 2-2, 0-1, etc. selon les équipes
+6. L'analyse_texte doit citer des chiffres réels des données ci-dessus
 
 Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
   "favori": "<nom exact de l'équipe favorite ou 'Match nul'>",
-  "score_confiance": <entier entre 52 et 85>,
-  "niveau_confiance": "<'faible' si <60, 'modérée' si 60-72, 'élevée' si >72>",
-  "prob_p1": <entier, probabilité victoire ${match.equipe1}>,
-  "prob_nul": <entier, probabilité match nul>,
-  "prob_p2": <entier, probabilité victoire ${match.equipe2}>,
-  "score_exact": "<score le plus probable X-Y>",
-  "analyse_texte": "<2-3 phrases factuelles sur ${match.equipe1} vs ${match.equipe2} avec chiffres réels>",
-  "raisons": ["<raison 1 spécifique à ces équipes>", "<raison 2>", "<raison 3>"],
+  "score_confiance": <entier 52-85>,
+  "niveau_confiance": "<'faible'|'modérée'|'élevée'>",
+  "prob_p1": <entier victoire ${match.equipe1}>,
+  "prob_nul": <entier match nul>,
+  "prob_p2": <entier victoire ${match.equipe2}>,
+  "score_exact": "<X-Y>",
+  "analyse_texte": "<2-3 phrases avec chiffres réels des données>",
+  "raisons": ["<raison basée sur données réelles>", "<raison 2>", "<raison 3>"],
   "trap_score": <entier 0-100>,
-  "trap_raison": "<risque principal de ce match>"
+  "trap_raison": "<risque principal>"
 }`;
 
-  const text = await callAI(prompt, 700);
+  const text = await callAI(prompt, 800);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Réponse IA invalide');
   const data = JSON.parse(jsonMatch[0]);
 
-  // Validation : s'assurer que les proba somment à 100
+  // Validation : proba = 100
   const total = (data.prob_p1 || 0) + (data.prob_nul || 0) + (data.prob_p2 || 0);
   if (total !== 100 && total > 0) {
-    const diff = 100 - total;
-    data.prob_p1 = (data.prob_p1 || 0) + diff;
+    data.prob_p1 = (data.prob_p1 || 0) + (100 - total);
   }
 
   return data;
@@ -120,7 +130,9 @@ router.get('/:matchId', authOptional, async (req, res) => {
       pronosticData = existing.rows[0];
     } else {
       // Générer via IA
-      const generated = await generatePronostic(match);
+      // Récupérer tous les matchs terminés pour calculer la forme
+    const allMatchesR = await query('SELECT * FROM matches ORDER BY date_heure ASC');
+    const generated = await generatePronostic(match, allMatchesR.rows);
 
       // Sauvegarder le pronostic générique (sans user)
       const saved = await query(
