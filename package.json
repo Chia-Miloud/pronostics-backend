@@ -19,6 +19,8 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "nodemailer": "^9.0.3",
+    "openai": "^6.45.0",
     "pg": "^8.22.0",
     "stripe": "^22.3.0"
   }
