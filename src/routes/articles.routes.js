@@ -30,6 +30,18 @@ router.get('/', async (req, res) => {
 });
 
 // ─── ARTICLE PAR SLUG (public) ────────────────────────────────────────────────
+router.get('/admin/all', requireAdmin, async (req, res) => {
+  try {
+    const r = await query(
+      `SELECT id, titre, slug, resume, categorie, publie, vues, published_at, created_at
+       FROM articles ORDER BY created_at DESC`
+    );
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/:slug', async (req, res) => {
   try {
     const r = await query(
@@ -40,19 +52,6 @@ router.get('/:slug', async (req, res) => {
     // Incrémenter les vues
     await query('UPDATE articles SET vues = vues + 1 WHERE slug = $1', [req.params.slug]);
     res.json(r.rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// ─── LISTE TOUS LES ARTICLES (admin) ─────────────────────────────────────────
-router.get('/admin/all', requireAdmin, async (req, res) => {
-  try {
-    const r = await query(
-      `SELECT id, titre, slug, resume, categorie, publie, vues, published_at, created_at
-       FROM articles ORDER BY created_at DESC`
-    );
-    res.json(r.rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
