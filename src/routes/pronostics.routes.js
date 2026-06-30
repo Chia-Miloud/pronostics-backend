@@ -30,43 +30,53 @@ async function callAI(prompt, maxTokens = 600) {
 
 // ─── GÉNÉRER UN PRONOSTIC IA ──────────────────────────────────────────────────
 async function generatePronostic(match) {
-  const prompt = `Tu es un expert en pronostics football pour la Coupe du Monde 2026.
-Analyse ce match et génère un pronostic précis.
+  const phase = match.phase || 'GROUP_STAGE';
+  const isKnockout = ['LAST_32','LAST_16','QUARTER_FINAL','SEMI_FINAL','FINAL','THIRD_PLACE'].includes(phase);
+  const enjeu = isKnockout ? 'Match éliminatoire — pas de match nul possible en temps réglementaire' : 'Phase de groupes';
 
-Match : ${match.equipe1} vs ${match.equipe2}
-Compétition : ${match.competition_nom || 'Coupe du Monde 2026'}
-Phase : ${match.phase || 'Phase de groupes'}
+  const prompt = `Tu es un analyste football expert de la Coupe du Monde 2026.
+Génère un pronostic ORIGINAL et UNIQUE pour ce match spécifique.
+
+MATCH : ${match.equipe1} vs ${match.equipe2}
+Phase : ${phase} | ${enjeu}
 Date : ${new Date(match.date_heure).toLocaleDateString('fr-FR')}
 
-Paramètres à analyser :
-- Classement FIFA des deux équipes
-- Forme récente (5 derniers matchs)
-- Historique des confrontations directes
-- Enjeux du match (qualification, élimination)
-- Fatigue et calendrier
-- Absences probables de joueurs clés
-- Conditions météo et lieu du match
-- Avantage psychologique
+INSTRUCTIONS IMPORTANTES :
+1. Analyse les forces réelles de ${match.equipe1} et ${match.equipe2} spécifiquement
+2. Les probabilités doivent refléter la réalité de CES deux équipes (pas des valeurs génériques)
+3. Le score exact doit être logique pour ce match précis (pas toujours 2-1)
+4. score_confiance entre 52 et 85 selon la clarté du favori
+5. prob_p1 + prob_nul + prob_p2 = 100 exactement
+6. Varie les scores : 1-0, 2-0, 1-1, 3-1, 2-2, 0-1, etc. selon les équipes
 
-Réponds UNIQUEMENT avec ce JSON valide (rien d'autre avant ou après) :
+Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
-  "favori": "nom de l'équipe favorite ou 'Match nul'",
-  "score_confiance": 72,
-  "niveau_confiance": "élevée",
-  "prob_p1": 55,
-  "prob_nul": 20,
-  "prob_p2": 25,
-  "score_exact": "2-1",
-  "analyse_texte": "Analyse factuelle en 2-3 phrases avec des chiffres précis.",
-  "raisons": ["Raison 1 avec chiffre", "Raison 2 factuelle", "Raison 3 contextuelle"],
-  "trap_score": 25,
-  "trap_raison": "Explication du risque si trap_score > 40"
+  "favori": "<nom exact de l'équipe favorite ou 'Match nul'>",
+  "score_confiance": <entier entre 52 et 85>,
+  "niveau_confiance": "<'faible' si <60, 'modérée' si 60-72, 'élevée' si >72>",
+  "prob_p1": <entier, probabilité victoire ${match.equipe1}>,
+  "prob_nul": <entier, probabilité match nul>,
+  "prob_p2": <entier, probabilité victoire ${match.equipe2}>,
+  "score_exact": "<score le plus probable X-Y>",
+  "analyse_texte": "<2-3 phrases factuelles sur ${match.equipe1} vs ${match.equipe2} avec chiffres réels>",
+  "raisons": ["<raison 1 spécifique à ces équipes>", "<raison 2>", "<raison 3>"],
+  "trap_score": <entier 0-100>,
+  "trap_raison": "<risque principal de ce match>"
 }`;
 
-  const text = await callAI(prompt);
+  const text = await callAI(prompt, 700);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Réponse IA invalide');
-  return JSON.parse(jsonMatch[0]);
+  const data = JSON.parse(jsonMatch[0]);
+
+  // Validation : s'assurer que les proba somment à 100
+  const total = (data.prob_p1 || 0) + (data.prob_nul || 0) + (data.prob_p2 || 0);
+  if (total !== 100 && total > 0) {
+    const diff = 100 - total;
+    data.prob_p1 = (data.prob_p1 || 0) + diff;
+  }
+
+  return data;
 }
 
 // ─── GET PRONOSTIC D'UN MATCH ─────────────────────────────────────────────────
@@ -101,7 +111,7 @@ router.get('/:matchId', authOptional, async (req, res) => {
 
     // Chercher un pronostic récent (< 6h, non lié à un user spécifique)
     const existing = await query(
-      `SELECT * FROM pronostics WHERE match_id = $1 AND user_id IS NULL AND created_at > NOW() - INTERVAL '6 hours' ORDER BY created_at DESC LIMIT 1`,
+      `SELECT * FROM pronostics WHERE match_id = $1 AND user_id IS NULL AND created_at > NOW() - INTERVAL '2 hours' ORDER BY created_at DESC LIMIT 1`,
       [matchId]
     );
 
