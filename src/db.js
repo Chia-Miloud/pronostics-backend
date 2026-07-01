@@ -6,6 +6,9 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  max: 5,              // max 5 connexions simultanées (Clever Cloud limite à 10)
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000,
 });
 
 const query = (text, params) => pool.query(text, params);
