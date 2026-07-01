@@ -39,6 +39,7 @@ app.use('/api/admin', require('./routes/admin.routes'));
 app.use('/api/articles', require('./routes/articles.routes'));
 app.use('/api/contact', require('./routes/contact.routes'));
 app.use('/api/analytics', require('./routes/analytics.routes'));
+app.use('/api/retention', require('./routes/retention.routes'));
 
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
