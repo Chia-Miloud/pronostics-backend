@@ -125,10 +125,13 @@ router.get('/', async (req, res) => {
         : n === 1 ? 'sur le dernier match'
         : `sur les ${n} derniers matchs`;
       const stats = calcStats(withProno.slice(0, n));
-      // Appliquer le cap à MAX_PCT
-      stats.pctCorrect = Math.min(stats.pctCorrect, MAX_PCT);
-      stats.pctScoreExact = Math.min(stats.pctScoreExact, MAX_PCT);
-      stats.pctProche = Math.min(stats.pctProche, MAX_PCT);
+      // Cap à MAX_PCT uniquement si moins de MIN_MATCHES matchs
+      // Si 5+ matchs et 100% réel -> on affiche 100% (crédible)
+      if (n < MIN_MATCHES) {
+        stats.pctCorrect = Math.min(stats.pctCorrect, MAX_PCT);
+        stats.pctScoreExact = Math.min(stats.pctScoreExact, MAX_PCT);
+        stats.pctProche = Math.min(stats.pctProche, MAX_PCT);
+      }
       allWindows.push({ label, n, stats });
     }
 
