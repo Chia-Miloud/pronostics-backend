@@ -109,31 +109,51 @@ router.get('/', async (req, res) => {
       });
     }
 
-    // Tester TOUTES les fenêtres possibles de 1 à N
-    // Pour chaque taille n, calculer les stats sur les n derniers matchs avec prono
+    // ─── LOGIQUE ANTI-SURCOTÉ ─────────────────────────────────────────────────
+    // Règles :
+    // 1. Minimum 5 matchs pour afficher un % (sinon prendre toute la compétition)
+    // 2. Jamais 100% sauf si 5+ matchs TOUS corrects
+    // 3. Cap à 90% maximum pour rester crédible
+    // 4. En cas d'égalité, préférer la fenêtre la plus large
+    const MIN_MATCHES = 5;
+    const MAX_PCT = 90; // plafond crédibilité
+
     const allWindows = [];
     for (let n = 1; n <= withProno.length; n++) {
       const label = n === withProno.length
         ? 'sur toute la compétition'
         : n === 1 ? 'sur le dernier match'
         : `sur les ${n} derniers matchs`;
-      allWindows.push({ label, n, stats: calcStats(withProno.slice(0, n)) });
+      const stats = calcStats(withProno.slice(0, n));
+      // Appliquer le cap à MAX_PCT
+      stats.pctCorrect = Math.min(stats.pctCorrect, MAX_PCT);
+      stats.pctScoreExact = Math.min(stats.pctScoreExact, MAX_PCT);
+      stats.pctProche = Math.min(stats.pctProche, MAX_PCT);
+      allWindows.push({ label, n, stats });
     }
 
-    const windows = allWindows;
-
-    const statsPerWindow = windows.map(w => ({
-      ...w,
-      stats: w.stats // déjà calculé
-    }));
+    // Filtrer : ne considérer que les fenêtres avec MIN_MATCHES matchs minimum
+    // Si pas assez de matchs, utiliser toute la compétition
+    const eligibleWindows = allWindows.filter(w => w.n >= MIN_MATCHES);
+    const statsPerWindow = eligibleWindows.length > 0 ? eligibleWindows : allWindows;
 
     // Trouver la meilleure fenêtre pour chaque indicateur
-    const bestCorrect = statsPerWindow.reduce((best, w) =>
-      w.stats.pctCorrect > best.stats.pctCorrect ? w : best);
-    const bestScoreExact = statsPerWindow.reduce((best, w) =>
-      w.stats.pctScoreExact > best.stats.pctScoreExact ? w : best);
-    const bestProche = statsPerWindow.reduce((best, w) =>
-      w.stats.pctProche > best.stats.pctProche ? w : best);
+    // En cas d'égalité de %, préférer la fenêtre la plus large (plus crédible)
+    const bestCorrect = statsPerWindow.reduce((best, w) => {
+      if (w.stats.pctCorrect > best.stats.pctCorrect) return w;
+      if (w.stats.pctCorrect === best.stats.pctCorrect && w.n > best.n) return w;
+      return best;
+    });
+    const bestScoreExact = statsPerWindow.reduce((best, w) => {
+      if (w.stats.pctScoreExact > best.stats.pctScoreExact) return w;
+      if (w.stats.pctScoreExact === best.stats.pctScoreExact && w.n > best.n) return w;
+      return best;
+    });
+    const bestProche = statsPerWindow.reduce((best, w) => {
+      if (w.stats.pctProche > best.stats.pctProche) return w;
+      if (w.stats.pctProche === best.stats.pctProche && w.n > best.n) return w;
+      return best;
+    });
 
     res.json({
       totalMatches: rows.length,
