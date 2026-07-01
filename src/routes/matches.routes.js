@@ -29,7 +29,7 @@ router.post('/sync', async (req, res) => {
 
     const response = await axios.get(`${FOOTBALL_API_URL}/competitions/${WC_2026_ID}/matches`, {
       headers: { 'X-Auth-Token': FOOTBALL_API_KEY },
-      params: { status: 'SCHEDULED,IN_PLAY,PAUSED,FINISHED' }
+      params: { status: 'SCHEDULED,TIMED,IN_PLAY,LIVE,PAUSED,FINISHED' }
     });
 
     const matches = response.data.matches || [];
@@ -38,15 +38,21 @@ router.post('/sync', async (req, res) => {
     for (const m of matches) {
       const statut = m.status === 'SCHEDULED' ? 'SCHEDULED'
         : m.status === 'IN_PLAY' ? 'IN_PLAY'
+        : m.status === 'LIVE' ? 'IN_PLAY'       // football-data utilise parfois LIVE
         : m.status === 'PAUSED' ? 'PAUSED'
-        : m.status === 'FINISHED' ? 'FINISHED' : m.status;
+        : m.status === 'FINISHED' ? 'FINISHED'
+        : m.status === 'TIMED' ? 'TIMED' : m.status;
+
+      // Score : fullTime si dispo, sinon currentScore (en cours de match)
+      const scoreHome = m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null;
+      const scoreAway = m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null;
 
       const existing = await query('SELECT id FROM matches WHERE external_id = $1', [String(m.id)]);
 
       if (existing.rows.length) {
         await query(
           `UPDATE matches SET statut = $1, score_p1 = $2, score_p2 = $3, updated_at = NOW() WHERE external_id = $4`,
-          [statut, m.score?.fullTime?.home ?? null, m.score?.fullTime?.away ?? null, String(m.id)]
+          [statut, scoreHome, scoreAway, String(m.id)]
         );
         updated++;
       } else {
@@ -85,14 +91,19 @@ const autoSync = async () => {
   try {
     const response = await axios.get(`${FOOTBALL_API_URL}/competitions/${WC_2026_ID}/matches`, {
       headers: { 'X-Auth-Token': FOOTBALL_API_KEY },
-      params: { status: 'SCHEDULED,IN_PLAY,PAUSED,FINISHED' }
+      params: { status: 'SCHEDULED,TIMED,IN_PLAY,LIVE,PAUSED,FINISHED' }
     });
     const matches = response.data.matches || [];
     for (const m of matches) {
       const statut = m.status === 'SCHEDULED' ? 'SCHEDULED'
         : m.status === 'IN_PLAY' ? 'IN_PLAY'
+        : m.status === 'LIVE' ? 'IN_PLAY'
         : m.status === 'PAUSED' ? 'PAUSED'
-        : m.status === 'FINISHED' ? 'FINISHED' : m.status;
+        : m.status === 'FINISHED' ? 'FINISHED'
+        : m.status === 'TIMED' ? 'TIMED' : m.status;
+      // Score en cours de match
+      const scoreHome = m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null;
+      const scoreAway = m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null;
       await query(
         `INSERT INTO matches (external_id, equipe1, equipe2, logo1, logo2, date_heure, phase, competition, statut, score_p1, score_p2)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -101,7 +112,7 @@ const autoSync = async () => {
           String(m.id), m.homeTeam?.name || 'TBD', m.awayTeam?.name || 'TBD',
           m.homeTeam?.crest || null, m.awayTeam?.crest || null, m.utcDate,
           m.stage || 'GROUP_STAGE', 'Coupe du Monde 2026', statut,
-          m.score?.fullTime?.home ?? null, m.score?.fullTime?.away ?? null,
+          scoreHome, scoreAway,
         ]
       );
     }
