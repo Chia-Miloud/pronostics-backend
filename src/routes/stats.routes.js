@@ -125,13 +125,7 @@ router.get('/', async (req, res) => {
         : n === 1 ? 'sur le dernier match'
         : `sur les ${n} derniers matchs`;
       const stats = calcStats(withProno.slice(0, n));
-      // Cap à MAX_PCT uniquement si moins de MIN_MATCHES matchs
-      // Si 5+ matchs et 100% réel -> on affiche 100% (crédible)
-      if (n < MIN_MATCHES) {
-        stats.pctCorrect = Math.min(stats.pctCorrect, MAX_PCT);
-        stats.pctScoreExact = Math.min(stats.pctScoreExact, MAX_PCT);
-        stats.pctProche = Math.min(stats.pctProche, MAX_PCT);
-      }
+      // Pas de modification du % réel
       allWindows.push({ label, n, stats });
     }
 
@@ -140,23 +134,29 @@ router.get('/', async (req, res) => {
     const eligibleWindows = allWindows.filter(w => w.n >= MIN_MATCHES);
     const statsPerWindow = eligibleWindows.length > 0 ? eligibleWindows : allWindows;
 
-    // Trouver la meilleure fenêtre pour chaque indicateur
-    // En cas d'égalité de %, préférer la fenêtre la plus large (plus crédible)
-    const bestCorrect = statsPerWindow.reduce((best, w) => {
-      if (w.stats.pctCorrect > best.stats.pctCorrect) return w;
-      if (w.stats.pctCorrect === best.stats.pctCorrect && w.n > best.n) return w;
-      return best;
-    });
-    const bestScoreExact = statsPerWindow.reduce((best, w) => {
-      if (w.stats.pctScoreExact > best.stats.pctScoreExact) return w;
-      if (w.stats.pctScoreExact === best.stats.pctScoreExact && w.n > best.n) return w;
-      return best;
-    });
-    const bestProche = statsPerWindow.reduce((best, w) => {
-      if (w.stats.pctProche > best.stats.pctProche) return w;
-      if (w.stats.pctProche === best.stats.pctProche && w.n > best.n) return w;
-      return best;
-    });
+    // Sélectionner la meilleure fenêtre pour chaque indicateur
+    // Règle : si la meilleure fenêtre a moins de MIN_MATCHES matchs ET que le % est 100%,
+    // on prend le 2ème meilleur (toujours réel, jamais modifié)
+    // Si 5+ matchs : % réel tel quel, même 100%
+    function selectBest(windows, key) {
+      // Trier par % décroissant, puis par nb matchs décroissant
+      const sorted = [...windows].sort((a, b) => {
+        if (b.stats[key] !== a.stats[key]) return b.stats[key] - a.stats[key];
+        return b.n - a.n;
+      });
+      const top = sorted[0];
+      // Si le meilleur est 100% sur moins de MIN_MATCHES matchs, prendre le suivant
+      if (top.stats[key] === 100 && top.n < MIN_MATCHES) {
+        // Chercher le prochain qui n'est pas 100% ou qui a 5+ matchs
+        const fallback = sorted.find(w => w.stats[key] < 100 || w.n >= MIN_MATCHES);
+        return fallback || top;
+      }
+      return top;
+    }
+
+    const bestCorrect = selectBest(statsPerWindow, 'pctCorrect');
+    const bestScoreExact = selectBest(statsPerWindow, 'pctScoreExact');
+    const bestProche = selectBest(statsPerWindow, 'pctProche');
 
     res.json({
       totalMatches: rows.length,
