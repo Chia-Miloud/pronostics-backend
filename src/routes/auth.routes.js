@@ -47,6 +47,8 @@ router.post('/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
     const token = jwt.sign({ id: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: '30d' });
+    // Tracker la connexion
+    await query('UPDATE users SET last_login = NOW(), nb_logins = COALESCE(nb_logins, 0) + 1 WHERE id = $1', [user.id]);
     res.json({ token, user: { id: user.id, email: user.email, pseudo: user.pseudo, plan: user.plan } });
   } catch (err) {
     console.error('login error:', err.message);

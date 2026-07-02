@@ -45,6 +45,7 @@ router.get('/users', requireAdmin, async (req, res) => {
   try {
     const r = await query(
       `SELECT u.id, u.prenom, u.nom, u.email, u.plan, u.telephone, u.created_at,
+              u.last_login, u.nb_logins,
               COUNT(p.id)::int AS nb_pronostics,
               MAX(p.created_at) AS last_pronostic
        FROM users u
