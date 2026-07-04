@@ -89,6 +89,40 @@ Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
   return data;
 }
 
+// ─── PRONOSTICS GÉNÉRIQUES DES MATCHS TERMINÉS (public, pour le bilan) ─────────────────────────────────────────────────────────────────────────────────
+router.get('/results', async (req, res) => {
+  try {
+    // Retourner les pronostics génériques (user_id IS NULL) pour les matchs terminés
+    // Prendre le plus récent par match
+    const r = await query(`
+      SELECT DISTINCT ON (p.match_id)
+        p.match_id, p.favori, p.score_confiance, p.niveau_confiance,
+        p.prob_p1, p.prob_nul, p.prob_p2
+      FROM pronostics p
+      JOIN matches m ON p.match_id = m.id
+      WHERE p.user_id IS NULL
+        AND m.statut = 'FINISHED'
+        AND m.score_p1 IS NOT NULL
+      ORDER BY p.match_id, p.created_at DESC
+    `);
+    // Retourner un objet { matchId: { favori, ... } }
+    const result = {};
+    for (const row of r.rows) {
+      result[row.match_id] = {
+        favori: row.favori,
+        score_confiance: row.score_confiance,
+        niveau_confiance: row.niveau_confiance,
+        prob_p1: row.prob_p1,
+        prob_nul: row.prob_nul,
+        prob_p2: row.prob_p2,
+      };
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET PRONOSTIC D'UN MATCH ─────────────────────────────────────────────────
 router.get('/:matchId', authOptional, async (req, res) => {
   try {
@@ -270,38 +304,5 @@ Réponds UNIQUEMENT avec ce JSON :
   }
 });
 
-// ─── PRONOSTICS GÉNÉRIQUES DES MATCHS TERMINÉS (public, pour le bilan) ─────────────────────────────────────────────────────────────────────────────────
-router.get('/results', async (req, res) => {
-  try {
-    // Retourner les pronostics génériques (user_id IS NULL) pour les matchs terminés
-    // Prendre le plus récent par match
-    const r = await query(`
-      SELECT DISTINCT ON (p.match_id)
-        p.match_id, p.favori, p.score_confiance, p.niveau_confiance,
-        p.prob_p1, p.prob_nul, p.prob_p2
-      FROM pronostics p
-      JOIN matches m ON p.match_id = m.id
-      WHERE p.user_id IS NULL
-        AND m.statut = 'FINISHED'
-        AND m.score_p1 IS NOT NULL
-      ORDER BY p.match_id, p.created_at DESC
-    `);
-    // Retourner un objet { matchId: { favori, ... } }
-    const result = {};
-    for (const row of r.rows) {
-      result[row.match_id] = {
-        favori: row.favori,
-        score_confiance: row.score_confiance,
-        niveau_confiance: row.niveau_confiance,
-        prob_p1: row.prob_p1,
-        prob_nul: row.prob_nul,
-        prob_p2: row.prob_p2,
-      };
-    }
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 module.exports = router;
