@@ -104,17 +104,33 @@ const autoSync = async () => {
       // Score en cours de match
       const scoreHome = m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null;
       const scoreAway = m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null;
+      const homeName = m.homeTeam?.name || 'TBD';
+      const awayName = m.awayTeam?.name || 'TBD';
+      const homeCrest = m.homeTeam?.crest || null;
+      const awayCrest = m.awayTeam?.crest || null;
       await query(
         `INSERT INTO matches (external_id, equipe1, equipe2, logo1, logo2, date_heure, phase, competition, statut, score_p1, score_p2)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         ON CONFLICT (external_id) DO UPDATE SET statut = $9, score_p1 = $10, score_p2 = $11, updated_at = NOW()`,
+         ON CONFLICT (external_id) DO UPDATE SET
+           -- Mettre à jour le nom si l'équipe est maintenant connue (TBD -> vrai nom)
+           equipe1 = CASE WHEN $2 != 'TBD' THEN $2 ELSE matches.equipe1 END,
+           equipe2 = CASE WHEN $3 != 'TBD' THEN $3 ELSE matches.equipe2 END,
+           logo1 = CASE WHEN $4 IS NOT NULL THEN $4 ELSE matches.logo1 END,
+           logo2 = CASE WHEN $5 IS NOT NULL THEN $5 ELSE matches.logo2 END,
+           statut = $9, score_p1 = $10, score_p2 = $11, updated_at = NOW()`,
         [
-          String(m.id), m.homeTeam?.name || 'TBD', m.awayTeam?.name || 'TBD',
-          m.homeTeam?.crest || null, m.awayTeam?.crest || null, m.utcDate,
+          String(m.id), homeName, awayName, homeCrest, awayCrest, m.utcDate,
           m.stage || 'GROUP_STAGE', 'Coupe du Monde 2026', statut,
           scoreHome, scoreAway,
         ]
       );
+      // Log si une équipe TBD vient d'être révélée
+      if (homeName !== 'TBD' || awayName !== 'TBD') {
+        const existing = await query('SELECT equipe1, equipe2 FROM matches WHERE external_id = $1', [String(m.id)]);
+        if (existing.rows.length && (existing.rows[0].equipe1 === 'TBD' || existing.rows[0].equipe2 === 'TBD')) {
+          console.log(`🏆 Équipes révélées: ${homeName} vs ${awayName} (${m.stage})`);
+        }
+      }
     }
     console.log(`✅ Auto-sync: ${matches.length} matchs mis à jour`);
   } catch (err) {
