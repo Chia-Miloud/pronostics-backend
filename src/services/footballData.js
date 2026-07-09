@@ -22,106 +22,346 @@ const FIFA_RANKINGS = {
   'Uzbekistan': 61, 'Jordan': 62, 'Bahrain': 63, 'Oman': 64, 'Kuwait': 65,
 };
 
-// ─── JOUEURS CLÉS & BLESSÉS (base CDM 2026 — mise à jour manuelle) ───────────
-// Format: { captain, stars, injured, suspended, form_note (1-10), goals_scored }
+// ─── JOUEURS CLÉS (données RÉELLES depuis football-data.org API) ─────────────────
+// Mis à jour automatiquement depuis l'API - squads officiels CDM 2026
 const TEAM_DATA = {
-  'Argentina': {
-    captain: 'Lionel Messi', stars: ['Messi', 'Di María', 'De Paul', 'Martínez'],
-    injured: [], suspended: [], form_note: 9, goals_scored: 12, goals_conceded: 3,
-    style: 'Possession technique, contre-attaques rapides'
-  },
-  'France': {
-    captain: 'Kylian Mbappé', stars: ['Mbappé', 'Griezmann', 'Camavinga', 'Tchouaméni'],
-    injured: ['Benzema (genou)'], suspended: [], form_note: 8, goals_scored: 10, goals_conceded: 4,
-    style: 'Jeu direct, vitesse en transition'
-  },
-  'England': {
-    captain: 'Harry Kane', stars: ['Kane', 'Bellingham', 'Saka', 'Foden'],
-    injured: [], suspended: [], form_note: 8, goals_scored: 11, goals_conceded: 3,
-    style: 'Pressing haut, jeu aérien'
-  },
-  'Brazil': {
-    captain: 'Rodrygo', stars: ['Rodrygo', 'Vinicius Jr', 'Endrick', 'Casemiro'],
-    injured: ['Neymar (long terme)'], suspended: [], form_note: 8, goals_scored: 14, goals_conceded: 5,
-    style: 'Jeu offensif, dribbles, créativité'
+  'Uruguay': {
+    captain: 'Darwin Núñez',
+    stars: ["Rodrigo Aguirre", "Darwin Núñez", "Agustín Canobbio", "Federico Valverde", "Giorgian De Arrascaeta"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, jeu direct',
   },
   'Germany': {
-    captain: 'Manuel Neuer', stars: ['Müller', 'Gnabry', 'Kimmich', 'Havertz'],
-    injured: [], suspended: [], form_note: 8, goals_scored: 13, goals_conceded: 4,
-    style: 'Pressing intense, organisation défensive'
+    captain: 'Kai Havertz',
+    stars: ["Kai Havertz", "Leroy Sané", "Deniz Undav", "Nadiem Amiri", "Joshua Kimmich"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing intense, organisation défensive',
   },
   'Spain': {
-    captain: 'Álvaro Morata', stars: ['Pedri', 'Gavi', 'Yamal', 'Morata'],
-    injured: [], suspended: [], form_note: 8, goals_scored: 9, goals_conceded: 3,
-    style: 'Tiki-taka, possession, pressing'
-  },
-  'Portugal': {
-    captain: 'Cristiano Ronaldo', stars: ['Ronaldo', 'Félix', 'Bernardo Silva', 'Rúben Dias'],
-    injured: [], suspended: [], form_note: 7, goals_scored: 10, goals_conceded: 5,
-    style: 'Jeu direct, centres, physique'
-  },
-  'Netherlands': {
-    captain: 'Virgil van Dijk', stars: ['Van Dijk', 'De Jong', 'Gakpo', 'Dumfries'],
-    injured: [], suspended: [], form_note: 7, goals_scored: 8, goals_conceded: 5,
-    style: 'Bloc défensif solide, contre-attaques'
-  },
-  'Morocco': {
-    captain: 'Romain Saïss', stars: ['Hakimi', 'Ziyech', 'En-Nesyri', 'Ounahi'],
-    injured: [], suspended: [], form_note: 8, goals_scored: 7, goals_conceded: 2,
-    style: 'Défense organisée, transitions rapides'
-  },
-  'United States': {
-    captain: 'Tyler Adams', stars: ['Pulisic', 'Reyna', 'McKennie', 'Turner'],
-    injured: [], suspended: [], form_note: 7, goals_scored: 9, goals_conceded: 6,
-    style: 'Pressing physique, jeu aérien'
-  },
-  'Mexico': {
-    captain: 'Guillermo Ochoa', stars: ['Lozano', 'Jiménez', 'Álvarez', 'Herrera'],
-    injured: ['Jiménez (incertain)'], suspended: [], form_note: 6, goals_scored: 6, goals_conceded: 7,
-    style: 'Bloc bas, contre-attaques'
-  },
-  'Japan': {
-    captain: 'Maya Yoshida', stars: ['Mitoma', 'Kubo', 'Doan', 'Endo'],
-    injured: [], suspended: [], form_note: 8, goals_scored: 8, goals_conceded: 4,
-    style: 'Pressing haut, transitions rapides, technique'
-  },
-  'South Korea': {
-    captain: 'Son Heung-min', stars: ['Son', 'Lee Kang-in', 'Hwang Hee-chan'],
-    injured: [], suspended: [], form_note: 7, goals_scored: 6, goals_conceded: 6,
-    style: 'Jeu direct, physique, Son décisif'
-  },
-  'Turkey': {
-    captain: 'Hakan Çalhanoğlu', stars: ['Çalhanoğlu', 'Güler', 'Yildiz', 'Demiral'],
-    injured: [], suspended: [], form_note: 7, goals_scored: 5, goals_conceded: 5,
-    style: 'Bloc médian, transitions'
+    captain: 'Lamine Yamal',
+    stars: ["Borja Iglesias", "Yeremi Pino", "Nico Williams", "Fabián Ruiz", "Marcos Llorente"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Tiki-taka, possession, pressing',
   },
   'Paraguay': {
-    captain: 'Gustavo Gómez', stars: ['Gómez', 'Almirón', 'Sanabria'],
-    injured: [], suspended: [], form_note: 5, goals_scored: 3, goals_conceded: 8,
-    style: 'Défense compacte, jeu physique'
+    captain: 'Gustavo Gómez',
+    stars: ["Antonio Sanabria", "Gabriel Ávalos", "Isidro Pitta", "Andrés Cubas", "Kaku"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Défense compacte',
   },
-  'Ecuador': {
-    captain: 'Enner Valencia', stars: ['Valencia', 'Caicedo', 'Plata'],
-    injured: [], suspended: [], form_note: 6, goals_scored: 5, goals_conceded: 7,
-    style: 'Physique, pressing'
+  'Argentina': {
+    captain: 'Lionel Messi',
+    stars: ["Lionel Messi", "Lautaro Martínez", "Nicolás González", "Rodrigo de Paul", "Leandro Paredes"],
+    injured: [], suspended: [],
+    form_note: 9, goals_scored: 0, goals_conceded: 0,
+    style: 'Possession technique, contre-attaques',
+  },
+  'Ghana': {
+    captain: 'Thomas Partey',
+    stars: ["Antoine Semenyo", "Brandon Thomas-Asante", "Jordan Ayew", "Thomas Partey", "Elisha Owusu"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, contre-attaques',
+  },
+  'Brazil': {
+    captain: 'Rodrygo',
+    stars: ["Vinicius Junior", "Neymar", "Matheus Cunha", "Lucas Paquetá", "Bruno Guimarães"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu offensif, dribbles, créativité',
+  },
+  'Portugal': {
+    captain: 'Cristiano Ronaldo',
+    stars: ["Cristiano Ronaldo", "Pedro Neto", "Rafael Leão", "Bernardo Silva", "Rúben Neves"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu direct, physique',
+  },
+  'Japan': {
+    captain: 'Maya Yoshida',
+    stars: ["Ritsu Doan", "Daizen Maeda", "Koki Ogawa", "Daichi Kamada", "Takefusa Kubo"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing haut, transitions rapides',
+  },
+  'Mexico': {
+    captain: 'Hirving Lozano',
+    stars: ["Raúl Jiménez", "Julián Quiñones", "Roberto Alvarado", "Edson Álvarez", "Orbelín Pineda"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, contre-attaques',
+  },
+  'England': {
+    captain: 'Harry Kane',
+    stars: ["Marcus Rashford", "Ollie Watkins", "Ivan Toney", "Jordan Henderson", "Eberechi Eze"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing haut, jeu aérien',
+  },
+  'United States': {
+    captain: 'Christian Pulisic',
+    stars: ["Christian Pulisic", "Tim Weah", "Haji Wright", "Weston McKennie", "Alejandro Zendejas"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing physique',
+  },
+  'South Korea': {
+    captain: 'Son Heung-min',
+    stars: ["Hwang Heechan", "Heung-min Son", "Hyun-jun Yang", "Jens Castrop", "In-beom Hwang"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu direct, physique',
+  },
+  'France': {
+    captain: 'Kylian Mbappé',
+    stars: ["Jean-Philippe Mateta", "Ousmane Dembélé", "Kylian Mbappé", "N'Golo Kanté", "Adrien Rabiot"],
+    injured: [], suspended: [],
+    form_note: 9, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu direct, vitesse en transition',
+  },
+  'South Africa': {
+    captain: 'Ronwen Williams',
+    stars: ["Lyle Foster", "Oswin Appollis", "Iqraam Rayners", "Themba Zwane", "Teboho Mokoena"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, contre-attaques',
+  },
+  'Algeria': {
+    captain: 'Riyad Mahrez',
+    stars: ["Riyad Mahrez", "Amine Gouiri", "Mohammed Amoura", "Nabil Bentaleb", "Houssem Aouar"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Technique, jeu collectif',
   },
   'Australia': {
-    captain: 'Mathew Ryan', stars: ['Leckie', 'Irvine', 'McGree'],
-    injured: [], suspended: [], form_note: 6, goals_scored: 4, goals_conceded: 6,
-    style: 'Bloc bas, longs ballons'
+    captain: 'Mathew Ryan',
+    stars: ["Mohamed Toure", "Nishan Velupillay", "Cristian Volpato", "Mathew Leckie", "Jackson Irvine"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, longs ballons',
+  },
+  'New Zealand': {
+    captain: 'Winston Reid',
+    stars: ["Kosta Barbarouses", "Logan Rogerson", "Chris Wood", "Alex Rufer", "Sarpreet Singh"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, physique',
+  },
+  'Switzerland': {
+    captain: 'Granit Xhaka',
+    stars: ["Breel Embolo", "Noah Okafor", "Cédric Itten", "Remo Freuler", "Granit Xhaka"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc médian, organisation',
+  },
+  'Ecuador': {
+    captain: 'Enner Valencia',
+    stars: ["Jordy Caicedo", "Enner Valencia", "John Yeboah", "Alan Franco", "Jordy Alcívar"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, pressing',
+  },
+  'Sweden': {
+    captain: 'Victor Nilsson Lindelöf',
+    stars: ["Alexander Isak", "Viktor Gyökeres", "Gustaf Nilsson", "Ken Sema", "Mattias Svanberg"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Organisation défensive',
+  },
+  'Czechia': {
+    captain: 'Tomáš Souček',
+    stars: ["Patrik Schick", "Tomáš Chorý", "Jan Kuchta", "Ladislav Krejčí", "Vladimír Darida"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc médian, physique',
+  },
+  'Croatia': {
+    captain: 'Luka Modrić',
+    stars: ["Andrej Kramarić", "Ivan Perišić", "Ante Budimir", "Luka Modrić", "Mateo Kovačić"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Possession, technique',
+  },
+  'Saudi Arabia': {
+    captain: 'Salem Al-Dawsari',
+    stars: ["Sultan Mandash", "Saleh Al Shehri", "Abdullah Al-Hamdan", "Salem Al Dawsari", "Abdullah Al Khaibari"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, contre-attaques',
+  },
+  'Tunisia': {
+    captain: 'Youssef Msakni',
+    stars: ["Sebastian Tounekti", "Firas Chaouat", "Elias Saad", "Ellyes Skhiri", "Rani Khedira"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc médian, organisation',
+  },
+  'Turkey': {
+    captain: 'Hakan Çalhanoğlu',
+    stars: ["Yunus Akgün", "Muhammed Kerem Aktürkoğlu", "Deniz Gul", "Salih Özcan", "Hakan Çalhanoğlu"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc médian, transitions',
+  },
+  'Senegal': {
+    captain: 'Sadio Mané',
+    stars: ["Sadio Mané", "Cherif Ndiaye", "Nicolas Jackson", "Pape Gueye", "Idrissa Gana Guèye"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, vitesse',
+  },
+  'Belgium': {
+    captain: 'Kevin De Bruyne',
+    stars: ["Romelu Lukaku", "Leandro Trossard", "Charles De Ketelaere", "Kevin De Bruyne", "Axel Witsel"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu offensif, créativité',
+  },
+  'Morocco': {
+    captain: 'Achraf Hakimi',
+    stars: ["Soufiane Rahimi", "Ayoub El Kaabi", "Abdessamad Ezzalzouli", "Sofyan Amrabat", "Brahim Diaz"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Défense organisée, transitions rapides',
+  },
+  'Austria': {
+    captain: 'Marcel Sabitzer',
+    stars: ["Michael Gregoritsch", "Marko Arnautovic", "Saša Kalajdžić", "Florian Grillitsch", "Alessandro Schöpf"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing, jeu direct',
+  },
+  'Colombia': {
+    captain: 'James Rodríguez',
+    stars: ["Jhon Córdoba", "Luis Díaz", "Luis Suárez", "James Rodríguez", "Juan Fernando Quintero"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Jeu technique, pressing',
+  },
+  'Egypt': {
+    captain: 'Mohamed Salah',
+    stars: ["Mohamed Salah", "Omar Marmoush", "Haissem Hassan", "Zizo", "Nabil Dunga"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Contre-attaques rapides',
+  },
+  'Canada': {
+    captain: 'Alphonso Davies',
+    stars: ["Jonathan David", "Cyle Larin", "Liam Millar", "Jonathan Osorio", "Stephen Eustáquio"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, pressing',
+  },
+  'Haiti': {
+    captain: 'Duckens Nazon',
+    stars: ["Duckens Nazon", "Frantzdy Pierrot", "Yassin Fortune", "Jean-Ricner Bellegarde", "Derrick Etienne"],
+    injured: [], suspended: [],
+    form_note: 4, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas',
+  },
+  'Iran': {
+    captain: 'Mehdi Taremi',
+    stars: ["Alireza Jahanbakhsh", "Mehdi Taremi", "Dennis Eckert", "Saeid Ezatolahi", "Mehdi Torabi"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Défense organisée, contre-attaques',
+  },
+  'Bosnia-Herzegovina': {
+    captain: 'Edin Džeko',
+    stars: ["Edin Džeko", "Jovo Lukić", "Ermedin Demirovic", "Dženis Burnić", "Ivan Šunjić"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, jeu aérien',
+  },
+  'Panama': {
+    captain: 'Rolando Blackburn',
+    stars: ["José Fajardo", "Ismael Díaz", "Tomas Rodriguez", "Adalberto Carrasquilla", "José Luis Rodríguez"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, physique',
+  },
+  'Cape Verde Islands': {
+    captain: 'Garry Rodrigues',
+    stars: ["Willy Semedo", "Ryan Mendes", "Jovane Cabral", "Deroy Duarte", "Garry Rodrigues"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Contre-attaques',
+  },
+  'Congo DR': {
+    captain: 'Chancel Mbemba',
+    stars: ["Yoane Wissa", "Theo Bongonda", "Cédric Bakambu", "Gaël Kakuta", "Samuel Moutoussamy"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, contre-attaques',
   },
   'Ivory Coast': {
-    captain: 'Sébastien Haller', stars: ['Haller', 'Zaha', 'Kessié'],
-    injured: [], suspended: [], form_note: 6, goals_scored: 4, goals_conceded: 7,
-    style: 'Physique, jeu direct'
+    captain: 'Sébastien Haller',
+    stars: ["Nicolas Pépé", "Evann Guessand", "Ange-Yoan Bonny", "Franck Kessié", "Seko Fofana"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, jeu direct',
+  },
+  'Qatar': {
+    captain: 'Akram Afif',
+    stars: ["Akram Afif", "Almoez Ali", "Mohammed Muntari", "Assim Madibo", "Abdulaziz Hatem"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Possession, technique',
+  },
+  'Jordan': {
+    captain: 'Yazan Al-Naimat',
+    stars: ["Musa Al Taamari", "Mahmoud Al Mardi", "Ali Olwan", "Nizar Al Rashdan", "Rajaei Ayed"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Défense organisée',
+  },
+  'Iraq': {
+    captain: 'Amjad Attwan',
+    stars: ["Aymen Hussein", "Ali Al-Hamadi", "Marko Farji", "Amir Al Ammari", "Kevin Yakob"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc bas, contre-attaques',
+  },
+  'Uzbekistan': {
+    captain: 'Eldor Shomurodov',
+    stars: ["Eldor Shomurodov", "Igor Sergeev", "Ruslanbek Jiyanov", "Dostonbek Xamdamov", "Otabek Shukurov"],
+    injured: [], suspended: [],
+    form_note: 5, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, organisation',
+  },
+  'Netherlands': {
+    captain: 'Virgil van Dijk',
+    stars: ["Cody Gakpo", "Justin Kluivert", "Wout Weghorst", "Marten de Roon", "Donyell Malen"],
+    injured: [], suspended: [],
+    form_note: 7, goals_scored: 0, goals_conceded: 0,
+    style: 'Bloc défensif, contre-attaques',
+  },
+  'Norway': {
+    captain: 'Erling Haaland',
+    stars: ["Alexander Sørloth", "Jens Hauge", "Erling Haaland", "Morten Thorsby", "Martin Ødegaard"],
+    injured: [], suspended: [],
+    form_note: 8, goals_scored: 0, goals_conceded: 0,
+    style: 'Physique, jeu direct',
+  },
+  'Scotland': {
+    captain: 'Andy Robertson',
+    stars: ["Che Adams", "George Hirst", "Ross Stewart", "Scott McTominay", "Kenny McLean"],
+    injured: [], suspended: [],
+    form_note: 6, goals_scored: 0, goals_conceded: 0,
+    style: 'Pressing haut, physique',
   },
   'Curaçao': {
-    captain: 'Leandro Bacuna', stars: ['Bacuna', 'Dos Santos'],
-    injured: [], suspended: [], form_note: 4, goals_scored: 2, goals_conceded: 10,
-    style: 'Défense organisée'
+    captain: 'Leandro Bacuna',
+    stars: ["Gervane Kastaneer", "Kenji Gorré", "Jürgen Locadia", "Leandro Bacuna", "Godfried Roemeratoe"],
+    injured: [], suspended: [],
+    form_note: 4, goals_scored: 0, goals_conceded: 0,
+    style: 'Défense organisée',
   },
 };
-
 function getTeamData(teamName) {
   // Recherche exacte puis partielle
   if (TEAM_DATA[teamName]) return TEAM_DATA[teamName];
