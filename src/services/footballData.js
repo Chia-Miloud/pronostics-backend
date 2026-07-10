@@ -451,7 +451,26 @@ async function collectMatchData(match, allMatches) {
      (m.equipe1 === equipe2 && m.equipe2 === equipe1))
   );
 
-  return { equipe1, equipe2, rank1, rank2, teamData1, teamData2, stats1, stats2, recent1, recent2, h2h };
+  // Calculer les vrais buts depuis les matchs réels (GARDE-FOU: pas les données statiques à 0)
+  const calcGoals = (teamName, matches) => {
+    let gf = 0, ga = 0, nb = 0;
+    for (const m of matches) {
+      if (m.statut !== 'FINISHED') continue;
+      if (m.equipe1 === teamName) { gf += (m.score_p1 || 0); ga += (m.score_p2 || 0); nb++; }
+      else if (m.equipe2 === teamName) { gf += (m.score_p2 || 0); ga += (m.score_p1 || 0); nb++; }
+    }
+    return { goalsFor: gf, goalsAgainst: ga, nbMatchs: nb };
+  };
+  const goals1 = calcGoals(equipe1, allMatches);
+  const goals2 = calcGoals(equipe2, allMatches);
+
+  // Mettre à jour avec les vrais buts (écrase les 0 statiques)
+  teamData1.goals_scored = goals1.goalsFor;
+  teamData1.goals_conceded = goals1.goalsAgainst;
+  teamData2.goals_scored = goals2.goalsFor;
+  teamData2.goals_conceded = goals2.goalsAgainst;
+
+  return { equipe1, equipe2, rank1, rank2, teamData1, teamData2, stats1, stats2, recent1, recent2, h2h, goals1, goals2 };
 }
 
 // ─── FORMAT PROMPT ────────────────────────────────────────────────────────────

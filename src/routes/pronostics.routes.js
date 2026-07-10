@@ -46,19 +46,20 @@ async function generatePronostic(match, allMatches) {
     console.log('Données réelles non disponibles:', e.message);
   }
 
-  const prompt = `Tu es un analyste football expert. Génère un pronostic précis basé sur les données réelles ci-dessous.
+  const prompt = `Tu es un analyste football expert et FACTUEL. Génère un pronostic précis basé UNIQUEMENT sur les données réelles ci-dessous.
 
 MATCH : ${match.equipe1} vs ${match.equipe2}
 Phase : ${phase} | ${enjeu}
 Date : ${new Date(match.date_heure).toLocaleDateString('fr-FR')}
 ${realData}
-INSTRUCTIONS :
-1. Base-toi UNIQUEMENT sur les données réelles fournies ci-dessus
-2. Les probabilités doivent refléter la forme réelle des équipes
-3. Le score exact doit être cohérent avec les stats offensives/défensives
-4. score_confiance entre 52 et 85 selon la clarté du favori
+⚠️ GARDE-FOUS ABSOLUS - VIOLATIONS INTERDITES :
+1. NE JAMAIS inventer de joueurs ou mentionner des joueurs qui ne sont PAS dans le squad officiel fourni ci-dessus
+2. NE JAMAIS dire qu'une équipe n'a pas marqué si les données montrent des buts
+3. Utiliser UNIQUEMENT les noms de joueurs listés dans les données ci-dessus
+4. Si les données montrent X buts marqués, citer ce chiffre réel
 5. prob_p1 + prob_nul + prob_p2 = 100 exactement
-6. L'analyse_texte doit citer des chiffres réels des données ci-dessus
+6. score_confiance entre 52 et 85
+7. L'analyse_texte DOIT citer les vrais chiffres des données (buts, matchs, forme)
 
 Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
