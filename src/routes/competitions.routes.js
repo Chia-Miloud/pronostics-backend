@@ -35,17 +35,19 @@ router.get('/:compId/matches', async (req, res) => {
 
     // Si c'est la CDM 2026 (external_id = 2000), utiliser la table matches existante
     if (comp.external_id === '2000') {
-      let whereClause = "competition_nom LIKE '%Coupe du Monde%' OR competition_nom LIKE '%World Cup%'";
-      if (status === 'live') whereClause += " AND statut IN ('IN_PLAY','PAUSED')";
-      else if (status === 'upcoming') whereClause += " AND statut IN ('TIMED','SCHEDULED') AND equipe1 != 'TBD'";
-      else if (status === 'finished') whereClause += " AND statut = 'FINISHED'";
+      let conditions = [];
+      if (status === 'live') conditions.push("statut IN ('IN_PLAY','PAUSED')");
+      else if (status === 'upcoming') conditions.push("statut IN ('TIMED','SCHEDULED')");
+      else if (status === 'finished') conditions.push("statut = 'FINISHED'");
+      // Pas de filtre sur competition_nom - tous les matchs sont CDM 2026
+      const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+      const orderBy = status === 'finished' ? 'ORDER BY date_heure DESC' : 'ORDER BY date_heure ASC';
 
       const r = await query(
         `SELECT id, equipe1 AS participant1, equipe2 AS participant2,
                 logo1 AS participant1_logo, logo2 AS participant2_logo,
                 date_heure, phase, competition_nom, statut, score_p1, score_p2
-         FROM matches WHERE ${whereClause}
-         ORDER BY date_heure DESC LIMIT 50`
+         FROM matches ${whereClause} ${orderBy} LIMIT 50`
       );
       return res.json({ competition: comp, matches: r.rows });
     }
