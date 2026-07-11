@@ -60,6 +60,8 @@ ${realData}
 5. prob_p1 + prob_nul + prob_p2 = 100 exactement
 6. score_confiance entre 52 et 85
 7. L'analyse_texte DOIT citer les vrais chiffres des données (buts, matchs, forme)
+8. Les buteurs_potentiels doivent être des joueurs OFFENSIFS du squad officiel ci-dessus (attaquants ou milieux offensifs)
+9. Les cotes doivent être cohérentes avec les probabilités (cote = 100/prob, arrondie à 2 décimales, minimum 1.10)
 
 Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
@@ -73,10 +75,23 @@ Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
   "analyse_texte": "<2-3 phrases avec chiffres réels des données>",
   "raisons": ["<raison basée sur données réelles>", "<raison 2>", "<raison 3>"],
   "trap_score": <entier 0-100>,
-  "trap_raison": "<risque principal>"
+  "trap_raison": "<risque principal>",
+  "buteurs_potentiels": [
+    {"nom": "<nom joueur equipe1 du squad officiel>", "equipe": "${match.equipe1}", "pct": <entier 15-65>, "raison": "<1 phrase courte>"},
+    {"nom": "<nom joueur equipe1 du squad officiel>", "equipe": "${match.equipe1}", "pct": <entier 10-50>, "raison": "<1 phrase courte>"},
+    {"nom": "<nom joueur equipe2 du squad officiel>", "equipe": "${match.equipe2}", "pct": <entier 15-65>, "raison": "<1 phrase courte>"},
+    {"nom": "<nom joueur equipe2 du squad officiel>", "equipe": "${match.equipe2}", "pct": <entier 10-50>, "raison": "<1 phrase courte>"}
+  ],
+  "cotes": {
+    "victoire_1": <cote bookmaker 1/N/2 pour ${match.equipe1}, ex: 2.10>,
+    "nul": <cote bookmaker pour match nul, ex: 3.40>,
+    "victoire_2": <cote bookmaker pour ${match.equipe2}, ex: 3.20>,
+    "score_exact": <cote bookmaker pour le score exact prédit, ex: 8.50>,
+    "source": "Moyenne Betclic/Unibet/Winamax/PMU"
+  }
 }`;
 
-  const text = await callAI(prompt, 800);
+  const text = await callAI(prompt, 1200);
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error('Réponse IA invalide');
   const data = JSON.parse(jsonMatch[0]);
@@ -169,14 +184,16 @@ router.get('/:matchId', authOptional, async (req, res) => {
     const allMatchesR = await query('SELECT * FROM matches ORDER BY date_heure ASC');
     const generated = await generatePronostic(match, allMatchesR.rows);
 
-      // Sauvegarder le pronostic générique (sans user)
+      // Sauvegarder le pronostic générique (sans user) avec buteurs et cotes
       const saved = await query(
-        `INSERT INTO pronostics (match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2, score_exact, analyse_texte, raisons, trap_score, trap_raison)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        `INSERT INTO pronostics (match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2, score_exact, analyse_texte, raisons, trap_score, trap_raison, buteurs, cotes)
+         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
         [matchId, generated.favori, generated.score_confiance, generated.niveau_confiance,
          generated.prob_p1, generated.prob_nul, generated.prob_p2, generated.score_exact,
          generated.analyse_texte, JSON.stringify(generated.raisons || []),
-         generated.trap_score, generated.trap_raison]
+         generated.trap_score, generated.trap_raison,
+         JSON.stringify(generated.buteurs_potentiels || []),
+         JSON.stringify(generated.cotes || null)]
       );
       pronosticData = saved.rows[0];
     }
@@ -199,6 +216,14 @@ router.get('/:matchId', authOptional, async (req, res) => {
       prob_p1: pronosticData.prob_p1,
       prob_nul: pronosticData.prob_nul,
       prob_p2: pronosticData.prob_p2,
+      // Cotes disponibles pour tous (incite à l'abonnement)
+      cotes: pronosticData.cotes || null,
+      // Buteurs potentiels : 1 seul pour free, tous pour plus/premium
+      buteurs: (() => {
+        const b = pronosticData.buteurs || [];
+        if (plan === 'free') return b.slice(0, 1); // 1 buteur en apercu
+        return b; // tous pour plus/premium
+      })(),
     };
     if (features.score_exact) result.score_exact = pronosticData.score_exact;
     if (features.analyse) {
