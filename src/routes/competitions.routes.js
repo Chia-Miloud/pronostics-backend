@@ -46,7 +46,7 @@ router.get('/:compId/matches', async (req, res) => {
       const r = await query(
         `SELECT id, equipe1 AS participant1, equipe2 AS participant2,
                 logo1 AS participant1_logo, logo2 AS participant2_logo,
-                date_heure, phase, competition_nom, statut, score_p1, score_p2
+                date_heure, phase, competition AS competition_nom, statut, score_p1, score_p2
          FROM matches ${whereClause} ${orderBy} LIMIT 50`
       );
       return res.json({ competition: comp, matches: r.rows });
