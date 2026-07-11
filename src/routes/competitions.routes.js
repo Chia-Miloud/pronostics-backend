@@ -29,7 +29,7 @@ router.get('/:compId/matches', async (req, res) => {
     const { status } = req.query; // 'upcoming', 'live', 'finished', 'all'
 
     // Trouver la compétition
-    const compR = await query('SELECT * FROM competitions WHERE id = $1 OR external_id = $1', [compId]);
+    const compR = await query('SELECT * FROM competitions WHERE id::text = $1 OR external_id = $1', [String(compId)]);
     if (!compR.rows.length) return res.status(404).json({ error: 'Compétition introuvable' });
     const comp = compR.rows[0];
 
