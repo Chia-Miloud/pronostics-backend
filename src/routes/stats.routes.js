@@ -82,15 +82,30 @@ function calcStats(matchesWithProno) {
 // ─── ROUTE GET /api/stats ─────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
+    // Filtre optionnel par compétition (external_id ou id)
+    const { competition_id } = req.query;
+    let compFilter = '';
+    const params = [];
+    if (competition_id) {
+      // Pour la CDM 2026 (external_id=2000), tous les matchs sont dans la table principale
+      // Pour les autres compétitions, filtrer par competition_id
+      if (competition_id === '2000') {
+        compFilter = ''; // Pas de filtre - tous les matchs sont CDM 2026
+      } else {
+        compFilter = 'AND m.competition_id = $1';
+        params.push(parseInt(competition_id));
+      }
+    }
+
     // Récupérer les matchs terminés avec leurs pronostics génériques
     const r = await query(`
       SELECT m.id, m.equipe1, m.equipe2, m.score_p1, m.score_p2, m.date_heure, m.phase,
              p.favori, p.score_exact, p.score_confiance
       FROM matches m
       LEFT JOIN pronostics p ON p.match_id = m.id AND p.user_id IS NULL
-      WHERE m.statut = 'FINISHED' AND m.score_p1 IS NOT NULL
+      WHERE m.statut = 'FINISHED' AND m.score_p1 IS NOT NULL ${compFilter}
       ORDER BY m.date_heure DESC
-    `);
+    `, params);
 
     const rows = r.rows;
     const withProno = rows.filter(row => row.favori !== null).map(row => ({
