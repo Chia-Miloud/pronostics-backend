@@ -60,13 +60,20 @@ router.post('/login', async (req, res) => {
 router.get('/me', authRequired, async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
+    // Recharger le profil complet depuis la BDD (pas juste le token JWT)
+    const userR = await query(
+      'SELECT id, email, pseudo, prenom, nom, telephone, plan, created_at FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    if (!userR.rows.length) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    const fullUser = userR.rows[0];
     const quotaR = await query(
       `SELECT COUNT(*) FROM pronostics WHERE user_id = $1 AND DATE(created_at) = $2`,
       [req.user.id, today]
     );
     res.json({
-      user: req.user,
-      quota: { used: parseInt(quotaR.rows[0].count), limit: req.user.plan === 'free' ? 1 : 999 }
+      user: fullUser,
+      quota: { used: parseInt(quotaR.rows[0].count), limit: fullUser.plan === 'free' ? 1 : 999 }
     });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
