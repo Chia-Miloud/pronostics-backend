@@ -130,8 +130,8 @@ router.get('/', async (req, res) => {
     // 2. Jamais 100% sauf si 5+ matchs TOUS corrects
     // 3. Cap à 90% maximum pour rester crédible
     // 4. En cas d'égalité, préférer la fenêtre la plus large
-    const MIN_MATCHES = 5;
-    const MAX_PCT = 90; // plafond crédibilité
+    const MIN_MATCHES = 8; // 100% autorisé uniquement sur 8+ matchs
+    const MAX_PCT = 99; // pas de plafond artificiel - on prend le 2ème meilleur si 100% sur <8 matchs
 
     const allWindows = [];
     for (let n = 1; n <= withProno.length; n++) {

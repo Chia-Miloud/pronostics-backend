@@ -45,7 +45,7 @@ router.post('/checkout', authRequired, async (req, res) => {
       await query('UPDATE users SET stripe_customer_id = $1 WHERE id = $2', [customerId, req.user.id]);
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripe.checkout.Session.create({
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
