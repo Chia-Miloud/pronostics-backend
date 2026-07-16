@@ -111,7 +111,7 @@ Format JSON strict :
 {
   "titre": "Titre SEO avec noms d'équipes et CDM 2026 (max 70 chars)",
   "resume": "2 phrases avec chiffres réels, accrocheur (max 180 chars)",
-  "contenu": "Article HTML 700-900 mots avec <h2>, <p>, <ul>, <strong> — données chiffrées réelles, mention naturelle de pronostics.coupedumonde.ai",
+  "contenu": "Article HTML MINIMUM 800 MOTS avec <h2>, <p>, <ul>, <strong> — données chiffrées réelles, mention naturelle de pronostics.coupedumonde.ai. Structure: intro (100 mots) + 4 sections h2 (150 mots chacune) + analyse favoris (100 mots) + conclusion CTA (50 mots)",
   "categorie": "actualite|analyse|strategie",
   "tags": ["coupe-du-monde-2026", "pronostic", "<nom-equipe>", "<autre-tag>"],
   "social_fb": "Post Facebook 200 chars avec emoji, résultat ou match à venir, lien vers site",
@@ -135,7 +135,7 @@ router.post('/generate', requireAdmin, async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: process.env.AI_MODEL || 'gpt-4o-mini',
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      max_tokens: 2500,
+      max_tokens: 5000,
     });
 
     const raw = completion.choices[0]?.message?.content || '';
@@ -215,7 +215,7 @@ router.post('/auto-publish', async (req, res) => {
     const completion = await openai.chat.completions.create({
       model: process.env.AI_MODEL || 'gpt-4o-mini',
       messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
-      max_tokens: 2500,
+      max_tokens: 5000,
     });
 
     const raw = completion.choices[0]?.message?.content || '';
@@ -238,5 +238,75 @@ router.post('/auto-publish', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ─── PLANIFICATION AUTOMATIQUE LUNDI + VENDREDI À 9H ─────────────────────────────────────────────────────────────────────────────────
+const autoPublishArticle = async () => {
+  try {
+    console.log('📝 Génération automatique article (lundi/vendredi)...');
+    const [matchsR, resultatsR] = await Promise.all([
+      query(`SELECT equipe1, equipe2, date_heure, phase FROM matches WHERE statut IN ('SCHEDULED','TIMED') ORDER BY date_heure ASC LIMIT 6`),
+      query(`SELECT equipe1, equipe2, score_p1, score_p2, date_heure FROM matches WHERE statut = 'FINISHED' ORDER BY date_heure DESC LIMIT 5`),
+    ]);
+    const contexte = await generateActualityTheme(matchsR.rows, resultatsR.rows);
+    const { system, user } = buildArticlePrompt(contexte);
+    const completion = await openai.chat.completions.create({
+      model: process.env.AI_MODEL || 'gpt-4o-mini',
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
+      max_tokens: 5000,
+    });
+    const raw = completion.choices[0]?.message?.content || '';
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Réponse IA invalide');
+    const data = JSON.parse(jsonMatch[0]);
+    const slug = slugify(data.titre) + '-' + Date.now().toString(36);
+    const r = await query(
+      `INSERT INTO articles (titre, slug, resume, contenu, categorie, tags, auteur, publie, social_fb, social_insta, social_tiktok, published_at)
+       VALUES ($1,$2,$3,$4,$5,$6,'\u00c9quipe R\u00e9daction',true,$7,$8,$9,NOW()) RETURNING id, titre`,
+      [data.titre, slug, data.resume, data.contenu, data.categorie || 'actualite',
+       data.tags||[], data.social_fb, data.social_insta, data.social_tiktok]
+    );
+    console.log(`\u2705 Article auto-publi\u00e9 : ${r.rows[0].titre}`);
+  } catch (err) {
+    console.error('autoPublishArticle error:', err.message);
+  }
+};
+
+const scheduleArticleGeneration = () => {
+  const scheduleNext = () => {
+    const now = new Date();
+    const day = now.getUTCDay(); // 0=dim, 1=lun, 5=ven
+    
+    // Trouver le prochain lundi (1) ou vendredi (5) à 9h UTC
+    let daysUntil = 0;
+    for (let i = 0; i <= 7; i++) {
+      const nextDay = (day + i) % 7;
+      const nextDate = new Date(now);
+      nextDate.setUTCDate(now.getUTCDate() + i);
+      nextDate.setUTCHours(9, 0, 0, 0);
+      if ((nextDay === 1 || nextDay === 5) && nextDate > now) {
+        daysUntil = i;
+        break;
+      }
+    }
+    
+    const next = new Date(now);
+    next.setUTCDate(now.getUTCDate() + daysUntil);
+    next.setUTCHours(9, 0, 0, 0);
+    
+    const delay = next - now;
+    const h = Math.floor(delay / 3600000);
+    const d = Math.floor(h / 24);
+    console.log(`📝 Article auto planifié dans ${d}j ${h%24}h (${next.toISOString()})`);
+    
+    setTimeout(async () => {
+      await autoPublishArticle();
+      scheduleNext(); // Planifier le suivant
+    }, delay);
+  };
+  scheduleNext();
+};
+
+// Démarrer la planification
+scheduleArticleGeneration();
 
 module.exports = router;
