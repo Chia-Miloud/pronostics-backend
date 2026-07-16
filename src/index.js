@@ -42,6 +42,7 @@ app.use('/api/analytics', require('./routes/analytics.routes'));
 app.use('/api/retention', require('./routes/retention.routes'));
 app.use('/api/daily-digest', require('./routes/daily-digest.routes'));
 app.use('/api/competitions', require('./routes/competitions.routes'));
+app.use('/api/post-cdm', require('./routes/post-cdm.routes'));
 
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
