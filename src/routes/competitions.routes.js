@@ -126,4 +126,53 @@ router.get('/today/all', async (req, res) => {
   }
 });
 
+
+// ─── DÉTAIL D'UN MATCH PAR ID ─────────────────────────────────────────────────
+// Supporte les IDs CDM (ex: "42") et les IDs composés (ex: "2001_551981")
+router.get('/match/:matchId', async (req, res) => {
+  try {
+    const { matchId } = req.params;
+    
+    // Si l'ID contient "_", c'est un match d'une autre compétition
+    if (matchId.includes('_')) {
+      const [compExtId, extMatchId] = matchId.split('_');
+      if (!FOOTBALL_API_KEY) return res.status(404).json({ error: 'Match introuvable' });
+      
+      const response = await axios.get(
+        `${FOOTBALL_API_URL}/matches/${extMatchId}`,
+        { headers: { 'X-Auth-Token': FOOTBALL_API_KEY }, timeout: 10000 }
+      );
+      const m = response.data;
+      return res.json({
+        id: matchId,
+        external_id: extMatchId,
+        participant1: m.homeTeam?.name || 'TBD',
+        participant2: m.awayTeam?.name || 'TBD',
+        participant1_logo: m.homeTeam?.crest || null,
+        participant2_logo: m.awayTeam?.crest || null,
+        date_heure: m.utcDate,
+        phase: m.stage || 'REGULAR_SEASON',
+        competition_nom: m.competition?.name || '',
+        statut: m.status === 'LIVE' ? 'IN_PLAY' : m.status,
+        score_p1: m.score?.fullTime?.home ?? m.score?.halfTime?.home ?? null,
+        score_p2: m.score?.fullTime?.away ?? m.score?.halfTime?.away ?? null,
+      });
+    }
+    
+    // Sinon c'est un match CDM (ID numérique)
+    const r = await query(
+      `SELECT id, equipe1 AS participant1, equipe2 AS participant2,
+              logo1 AS participant1_logo, logo2 AS participant2_logo,
+              date_heure, phase, competition AS competition_nom, statut, score_p1, score_p2
+       FROM matches WHERE id = $1 OR id::text = $1`,
+      [matchId]
+    );
+    if (!r.rows.length) return res.status(404).json({ error: 'Match introuvable' });
+    res.json(r.rows[0]);
+  } catch (err) {
+    console.error('match detail error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
