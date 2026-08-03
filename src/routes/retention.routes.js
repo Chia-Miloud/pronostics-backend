@@ -291,6 +291,7 @@ const scheduleRetention = () => {
   console.log(`📧 Relances planifiées dans ${Math.round(delay / 60000)} minutes`);
 };
 
-scheduleRetention();
+// PAUSE: relances désactivées - reprise avec prono-sport.io
+// scheduleRetention();
 
 module.exports = router;

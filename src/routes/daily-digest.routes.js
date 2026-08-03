@@ -242,6 +242,7 @@ const scheduleDailyDigest = () => {
   console.log(`📧 Digest quotidien planifié dans ${h}h${m}min`);
 };
 
-scheduleDailyDigest();
+// PAUSE: emails automatiques désactivés - reprise avec prono-sport.io
+// scheduleDailyDigest();
 
 module.exports = router;
