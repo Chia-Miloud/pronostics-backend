@@ -43,6 +43,7 @@ app.use('/api/retention', require('./routes/retention.routes'));
 app.use('/api/daily-digest', require('./routes/daily-digest.routes'));
 app.use('/api/competitions', require('./routes/competitions.routes'));
 app.use('/api/post-cdm', require('./routes/post-cdm.routes'));
+app.use('/api/matches/featured', require('./routes/featured.routes'));
 
 // ─── HEALTH ───────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
