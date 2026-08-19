@@ -49,6 +49,8 @@ router.post('/checkout', authRequired, async (req, res) => {
       customer: customerId,
       mode: 'subscription',
       payment_method_types: ['card'],
+      // Les codes de lancement affichés sur le site sont saisis et validés directement par Stripe.
+      allow_promotion_codes: true,
       line_items: [{ price: planConfig.priceId(), quantity: 1 }],
       success_url: `${frontendUrl}/abonnement?success=true&plan=${plan}`,
       cancel_url: `${frontendUrl}/abonnement?canceled=true`,

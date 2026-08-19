@@ -68,6 +68,13 @@ const initDB = async () => {
     )
   `);
 
+  // Les matchs des championnats sont identifiés par une clé externe composée
+  // (ex. 2015_559715) et ne figurent pas nécessairement dans la table historique CDM.
+  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS external_match_id TEXT`);
+  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS buteurs JSONB`);
+  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS cotes JSONB`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_pronostics_external_match_id ON pronostics(external_match_id)`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS articles (
       id SERIAL PRIMARY KEY,

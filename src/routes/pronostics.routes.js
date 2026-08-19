@@ -8,6 +8,7 @@ const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
 const { collectMatchData, formatDataForPrompt } = require('../services/footballData');
+const { resolveSeasonMatch } = require('../services/seasonMatchData');
 const { query: dbQuery } = require('../db');
 
 const PLAN_FEATURES = {
@@ -32,18 +33,21 @@ async function callAI(prompt, maxTokens = 600) {
 }
 
 // ─── GÉNÉRER UN PRONOSTIC IA ──────────────────────────────────────────────────
-async function generatePronostic(match, allMatches) {
-  const phase = match.phase || 'GROUP_STAGE';
+async function generatePronostic(match, allMatches, verifiedContext = null) {
+  const phase = match.phase || 'REGULAR_SEASON';
   const isKnockout = ['LAST_32','LAST_16','QUARTER_FINAL','SEMI_FINAL','FINAL','THIRD_PLACE'].includes(phase);
   const enjeu = isKnockout ? 'Match éliminatoire — pas de prolongations en temps réglementaire' : 'Phase de groupes';
 
-  // Collecter les données réelles
-  let realData = '';
-  try {
-    const data = await collectMatchData(match, allMatches || []);
-    realData = formatDataForPrompt(data);
-  } catch(e) {
-    console.log('Données réelles non disponibles:', e.message);
+  // Les compétitions de clubs utilisent le contexte officiel de leur calendrier.
+  // Les anciennes données CDM ne restent qu'un secours pour les matchs historiques locaux.
+  let realData = verifiedContext || '';
+  if (!realData) {
+    try {
+      const data = await collectMatchData(match, allMatches || []);
+      realData = formatDataForPrompt(data);
+    } catch (e) {
+      console.log('Données réelles non disponibles:', e.message);
+    }
   }
 
   const prompt = `Tu es un analyste football expert et FACTUEL. Génère un pronostic précis basé UNIQUEMENT sur les données réelles ci-dessous.
@@ -53,15 +57,14 @@ Phase : ${phase} | ${enjeu}
 Date : ${new Date(match.date_heure).toLocaleDateString('fr-FR')}
 ${realData}
 ⚠️ GARDE-FOUS ABSOLUS - VIOLATIONS INTERDITES :
-1. NE JAMAIS inventer de joueurs ou mentionner des joueurs qui ne sont PAS dans le squad officiel fourni ci-dessus
-2. NE JAMAIS dire qu'une équipe n'a pas marqué si les données montrent des buts
-3. Utiliser UNIQUEMENT les noms de joueurs listés dans les données ci-dessus
-4. Si les données montrent X buts marqués, citer ce chiffre réel
-5. prob_p1 + prob_nul + prob_p2 = 100 exactement
-6. score_confiance entre 52 et 85
-7. L'analyse_texte DOIT citer les vrais chiffres des données (buts, matchs, forme)
-8. Les buteurs_potentiels doivent être des joueurs OFFENSIFS du squad officiel ci-dessus (attaquants ou milieux offensifs)
-9. Les cotes doivent être cohérentes avec les probabilités (cote = 100/prob, arrondie à 2 décimales, minimum 1.10)
+1. NE JAMAIS inventer de joueurs, d'absences, de blessures, de suspensions ou de statistiques non présentes dans les données ci-dessus.
+2. NE JAMAIS dire qu'une équipe n'a pas marqué si les données montrent des buts.
+3. Si aucune liste d'effectif officielle vérifiée n'est fournie, retourner impérativement un tableau vide pour buteurs_potentiels.
+4. Si les données montrent X buts marqués, citer uniquement ce chiffre réel.
+5. prob_p1 + prob_nul + prob_p2 = 100 exactement.
+6. score_confiance entre 52 et 85.
+7. L'analyse_texte doit s'appuyer uniquement sur les données disponibles (calendrier, forme, résultats, buts).
+8. Les cotes sont des cotes indicatives calculées à partir des probabilités ; ne jamais les présenter comme des cotes bookmakers observées.
 
 Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
@@ -76,18 +79,13 @@ Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
   "raisons": ["<raison basée sur données réelles>", "<raison 2>", "<raison 3>"],
   "trap_score": <entier 0-100>,
   "trap_raison": "<risque principal>",
-  "buteurs_potentiels": [
-    {"nom": "<nom joueur equipe1 du squad officiel>", "equipe": "${match.equipe1}", "pct": <entier 15-65>, "raison": "<1 phrase courte>"},
-    {"nom": "<nom joueur equipe1 du squad officiel>", "equipe": "${match.equipe1}", "pct": <entier 10-50>, "raison": "<1 phrase courte>"},
-    {"nom": "<nom joueur equipe2 du squad officiel>", "equipe": "${match.equipe2}", "pct": <entier 15-65>, "raison": "<1 phrase courte>"},
-    {"nom": "<nom joueur equipe2 du squad officiel>", "equipe": "${match.equipe2}", "pct": <entier 10-50>, "raison": "<1 phrase courte>"}
-  ],
+    "buteurs_potentiels": [],
   "cotes": {
-    "victoire_1": <cote bookmaker 1/N/2 pour ${match.equipe1}, ex: 2.10>,
-    "nul": <cote bookmaker pour match nul, ex: 3.40>,
-    "victoire_2": <cote bookmaker pour ${match.equipe2}, ex: 3.20>,
-    "score_exact": <cote bookmaker pour le score exact prédit, ex: 8.50>,
-    "source": "Moyenne Betclic/Unibet/Winamax/PMU"
+    "victoire_1": <cote indicative décimale pour ${match.equipe1}>,
+    "nul": <cote indicative décimale pour match nul>,
+    "victoire_2": <cote indicative décimale pour ${match.equipe2}>,
+    "score_exact": <cote indicative pour le score exact prédit>,
+    "source": "Estimation Prono Sport fondée sur les probabilités IA"
   }
 }`;
 
@@ -161,34 +159,48 @@ router.get('/:matchId', authOptional, async (req, res) => {
 
     if (!user) return res.status(401).json({ error: 'Connexion requise' });
 
-    // Récupérer le match — CORRECTION: utiliser competition_nom (pas competition)
-    const matchR = await query(
-      `SELECT id, equipe1, equipe2, date_heure, phase, competition AS competition_nom, statut, score_p1, score_p2
-       FROM matches WHERE id = $1`, [matchId]
-    );
-    if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
-    const match = matchR.rows[0];
+    const isSeasonMatch = String(matchId).includes('_');
+    let match;
+    let storageMatchId = null;
+    let externalMatchId = null;
+    let verifiedContext = null;
+    let allMatches = [];
 
-    // Chercher un pronostic récent (< 6h, non lié à un user spécifique)
+    if (isSeasonMatch) {
+      // Les matchs de championnat restent liés à leur source officielle.
+      const seasonData = await resolveSeasonMatch(matchId);
+      match = seasonData.match;
+      externalMatchId = String(matchId);
+      verifiedContext = seasonData.context;
+      allMatches = seasonData.history;
+    } else {
+      const matchR = await query(
+        `SELECT id, equipe1, equipe2, date_heure, phase, competition AS competition_nom, statut, score_p1, score_p2
+         FROM matches WHERE id = $1`, [matchId]
+      );
+      if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
+      match = matchR.rows[0];
+      storageMatchId = match.id;
+      const allMatchesR = await query('SELECT * FROM matches ORDER BY date_heure ASC');
+      allMatches = allMatchesR.rows;
+    }
+
+    const cacheField = isSeasonMatch ? 'external_match_id' : 'match_id';
+    const cacheValue = isSeasonMatch ? externalMatchId : storageMatchId;
     const existing = await query(
-      `SELECT * FROM pronostics WHERE match_id = $1 AND user_id IS NULL AND created_at > NOW() - INTERVAL '2 hours' ORDER BY created_at DESC LIMIT 1`,
-      [matchId]
+      `SELECT * FROM pronostics WHERE ${cacheField} = $1 AND user_id IS NULL AND created_at > NOW() - INTERVAL '2 hours' ORDER BY created_at DESC LIMIT 1`,
+      [cacheValue]
     );
 
     let pronosticData;
     if (existing.rows.length) {
       pronosticData = existing.rows[0];
     } else {
-      // Générer via IA
-      // Récupérer tous les matchs terminés pour calculer la forme
-    const allMatchesR = await query('SELECT * FROM matches ORDER BY date_heure ASC');
-    const generated = await generatePronostic(match, allMatchesR.rows);
-
-      // Sauvegarder le pronostic générique (sans user) avec buteurs et cotes
+      const generated = await generatePronostic(match, allMatches, verifiedContext);
       const saved = await query(
-        `INSERT INTO pronostics (match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2, score_exact, analyse_texte, raisons, trap_score, trap_raison, buteurs, cotes)
-         VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING *`,
-        [matchId, generated.favori, generated.score_confiance, generated.niveau_confiance,
+        `INSERT INTO pronostics (match_id, external_match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2, score_exact, analyse_texte, raisons, trap_score, trap_raison, buteurs, cotes)
+         VALUES ($1, $2, NULL, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+        [storageMatchId, externalMatchId, generated.favori, generated.score_confiance, generated.niveau_confiance,
          generated.prob_p1, generated.prob_nul, generated.prob_p2, generated.score_exact,
          generated.analyse_texte, JSON.stringify(generated.raisons || []),
          generated.trap_score, generated.trap_raison,
@@ -198,12 +210,12 @@ router.get('/:matchId', authOptional, async (req, res) => {
       pronosticData = saved.rows[0];
     }
 
-    // Enregistrer la consommation du quota (uniquement pour les users free)
+    // Enregistrer la consommation du quota (uniquement pour les utilisateurs Free).
     if (plan === 'free') {
       await query(
-        `INSERT INTO pronostics (match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [matchId, user.id, pronosticData.favori, pronosticData.score_confiance,
+        `INSERT INTO pronostics (match_id, external_match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [storageMatchId, externalMatchId, user.id, pronosticData.favori, pronosticData.score_confiance,
          pronosticData.niveau_confiance, pronosticData.prob_p1, pronosticData.prob_nul, pronosticData.prob_p2]
       );
     }
