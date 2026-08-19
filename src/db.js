@@ -75,6 +75,31 @@ const initDB = async () => {
   await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS cotes JSONB`);
   await query(`CREATE INDEX IF NOT EXISTS idx_pronostics_external_match_id ON pronostics(external_match_id)`);
 
+  // Attribution consentie et journal des conversions pour la déduplication Meta/GA4.
+  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attribution JSONB`);
+  await query(`
+    CREATE TABLE IF NOT EXISTS conversion_events (
+      event_id TEXT PRIMARY KEY,
+      event_name TEXT NOT NULL,
+      user_id INTEGER REFERENCES users(id),
+      stripe_session_id TEXT,
+      payload JSONB,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await query(`
+    CREATE TABLE IF NOT EXISTS page_views (
+      id SERIAL PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      page TEXT NOT NULL,
+      referrer TEXT,
+      user_agent TEXT,
+      user_id INTEGER REFERENCES users(id),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await query(`ALTER TABLE page_views ADD COLUMN IF NOT EXISTS attribution JSONB`);
+
   await query(`
     CREATE TABLE IF NOT EXISTS articles (
       id SERIAL PRIMARY KEY,

@@ -11,7 +11,7 @@ const requireAdmin = [authRequired, (req, res, next) => {
 // ─── TRACKER UNE PAGE VUE ─────────────────────────────────────────────────────
 router.post('/track', authOptional, async (req, res) => {
   try {
-    const { session_id, page, referrer } = req.body;
+    const { session_id, page, referrer, attribution = null } = req.body;
     if (!session_id || !page) return res.status(400).json({ error: 'session_id et page requis' });
 
     const ua = req.headers['user-agent'] || '';
@@ -26,9 +26,12 @@ router.post('/track', authOptional, async (req, res) => {
     }
 
     await query(
-      `INSERT INTO page_views (session_id, page, referrer, user_agent, user_id)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [session_id, page, referrer || null, ua.slice(0, 300), req.user?.id || null]
+      `INSERT INTO page_views (session_id, page, referrer, user_agent, user_id, attribution)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        session_id, page, referrer || null, ua.slice(0, 300), req.user?.id || null,
+        attribution ? JSON.stringify(attribution) : null,
+      ]
     );
 
     res.json({ tracked: true });

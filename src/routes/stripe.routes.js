@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { query } = require('../db');
+const { sendMetaEvent } = require('../services/metaCapi');
 
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) return null;
@@ -50,6 +51,33 @@ router.post('/', async (req, res) => {
             console.log(`✅ Plan activé: user ${userId} → ${plan}`);
           } else {
             console.log(`ℹ️ Plan ignoré (rétrogradation bloquée): user ${userId} ${currentPlan} → ${plan}`);
+          }
+
+          // Purchase CAPI : uniquement après confirmation de paiement et une seule fois par event_id.
+          const eventId = session.metadata?.meta_event_id;
+          const consent = session.metadata?.meta_consent === 'true';
+          const isPaid = ['paid', 'no_payment_required'].includes(session.payment_status);
+          if (eventId && consent && isPaid) {
+            const claimed = await query(
+              `INSERT INTO conversion_events (event_id, event_name, user_id, stripe_session_id, payload)
+               VALUES ($1, 'Purchase', $2, $3, $4)
+               ON CONFLICT (event_id) DO NOTHING
+               RETURNING event_id`,
+              [eventId, userId, session.id, JSON.stringify({ plan, amount_total: session.amount_total, currency: session.currency })]
+            );
+            if (claimed.rows.length) {
+              const buyer = await query('SELECT email, attribution FROM users WHERE id = $1', [userId]);
+              const attribution = buyer.rows[0]?.attribution || {};
+              void sendMetaEvent({
+                eventName: 'Purchase', eventId, eventSourceUrl: 'https://prono-sport.io/abonnement',
+                email: buyer.rows[0]?.email, attribution, consent: true,
+                customData: {
+                  value: typeof session.amount_total === 'number' ? session.amount_total / 100 : undefined,
+                  currency: (session.currency || 'eur').toUpperCase(),
+                  content_name: plan, content_type: 'product',
+                },
+              });
+            }
           }
         }
         break;

@@ -29,11 +29,18 @@ router.post('/checkout', authRequired, async (req, res) => {
     const stripe = getStripe();
     if (!stripe) return res.status(503).json({ error: 'Paiement non configuré' });
 
-    const { plan } = req.body;
+    const { plan, tracking = {} } = req.body;
     const planConfig = PLANS[plan];
     if (!planConfig) return res.status(400).json({ error: 'Plan invalide' });
 
     const frontendUrl = getFrontendUrl();
+    const metaEventId = tracking?.eventId || null;
+    const trackingConsent = tracking?.consent === true;
+
+    // Conserver l'attribution uniquement si la personne a accepté la mesure.
+    if (trackingConsent && tracking?.attribution) {
+      await query('UPDATE users SET attribution = $1 WHERE id = $2', [JSON.stringify(tracking.attribution), req.user.id]);
+    }
 
     // Récupérer ou créer le customer Stripe
     let customerId = req.user.stripe_customer_id;
@@ -47,6 +54,13 @@ router.post('/checkout', authRequired, async (req, res) => {
       await query('UPDATE users SET stripe_customer_id = $1 WHERE id = $2', [customerId, req.user.id]);
     }
 
+    const checkoutMetadata = {
+      user_id: String(req.user.id),
+      plan,
+      ...(metaEventId ? { meta_event_id: String(metaEventId) } : {}),
+      ...(trackingConsent ? { meta_consent: 'true' } : {}),
+    };
+
     const session = await stripe.checkout.Session.create({
       customer: customerId,
       mode: 'subscription',
@@ -54,18 +68,45 @@ router.post('/checkout', authRequired, async (req, res) => {
       // Les codes de lancement affichés sur le site sont saisis et validés directement par Stripe.
       allow_promotion_codes: true,
       line_items: [{ price: planConfig.priceId(), quantity: 1 }],
-      success_url: `${frontendUrl}/abonnement?success=true&plan=${plan}`,
+      success_url: `${frontendUrl}/abonnement?success=true&plan=${encodeURIComponent(plan)}&session_id={CHECKOUT_SESSION_ID}${metaEventId ? `&meta_event_id=${encodeURIComponent(metaEventId)}` : ''}`,
       cancel_url: `${frontendUrl}/abonnement?canceled=true`,
-      metadata: { user_id: String(req.user.id), plan },
+      metadata: checkoutMetadata,
       subscription_data: {
-        metadata: { user_id: String(req.user.id), plan },
+        metadata: checkoutMetadata,
       },
     });
 
-    res.json({ url: session.url });
+    res.json({ url: session.url, eventId: metaEventId });
   } catch (err) {
     console.error('checkout error:', err.message);
     res.status(500).json({ error: 'Erreur lors de la création de la session de paiement' });
+  }
+});
+
+// ─── GET /api/subscription/checkout-session ─────────────────────────────────
+// Le navigateur ne reçoit une conversion que si Stripe confirme réellement la session.
+router.get('/checkout-session', authRequired, async (req, res) => {
+  try {
+    const stripe = getStripe();
+    const sessionId = req.query.session_id;
+    if (!stripe || !sessionId) return res.status(400).json({ error: 'Session requise' });
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (String(session.metadata?.user_id || '') !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Session non autorisée' });
+    }
+
+    const paid = session.payment_status === 'paid' || session.status === 'complete';
+    res.json({
+      paid,
+      value: typeof session.amount_total === 'number' ? session.amount_total / 100 : null,
+      currency: (session.currency || 'eur').toUpperCase(),
+      plan: session.metadata?.plan || null,
+      eventId: session.metadata?.meta_event_id || null,
+    });
+  } catch (err) {
+    console.error('checkout-session error:', err.message);
+    res.status(500).json({ error: 'Impossible de vérifier le paiement' });
   }
 });
 

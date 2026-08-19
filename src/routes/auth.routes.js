@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../db');
 const { authRequired, JWT_SECRET } = require('../middleware/auth');
+const { sendMetaEvent } = require('../services/metaCapi');
 
 const isDatabaseRecovery = (error) =>
   error?.code === '57P03' || /database system is in recovery mode/i.test(error?.message || '');
@@ -10,7 +11,7 @@ const isDatabaseRecovery = (error) =>
 // ─── INSCRIPTION ──────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, prenom, nom, telephone } = req.body;
+    const { email, password, prenom, nom, telephone, tracking = {} } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
     if (password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min)' });
 
@@ -23,12 +24,33 @@ router.post('/register', async (req, res) => {
 
     const password_hash = await bcrypt.hash(password, 12);
     const r = await query(
-      `INSERT INTO users (email, pseudo, password_hash, prenom, nom, telephone)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, email, pseudo, plan`,
-      [email.toLowerCase(), pseudo, password_hash, prenom || null, nom || null, telephone || null]
+      `INSERT INTO users (email, pseudo, password_hash, prenom, nom, telephone, attribution)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, pseudo, plan`,
+      [
+        email.toLowerCase(), pseudo, password_hash, prenom || null, nom || null, telephone || null,
+        tracking?.consent ? JSON.stringify(tracking.attribution || {}) : null,
+      ]
     );
     const user = r.rows[0];
     const token = jwt.sign({ id: user.id, email: user.email, plan: user.plan }, JWT_SECRET, { expiresIn: '30d' });
+
+    // L'inscription est confirmée par la base avant tout événement de conversion.
+    if (tracking?.eventId) {
+      await query(
+        `INSERT INTO conversion_events (event_id, event_name, user_id, payload)
+         VALUES ($1, 'CompleteRegistration', $2, $3)
+         ON CONFLICT (event_id) DO NOTHING`,
+        [tracking.eventId, user.id, JSON.stringify({ attribution: tracking.attribution || {} })]
+      );
+      void sendMetaEvent({
+        eventName: 'CompleteRegistration', eventId: tracking.eventId, eventSourceUrl: tracking.pageUrl,
+        email: user.email, userAgent: req.headers['user-agent'],
+        ip: String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim(),
+        attribution: tracking.attribution || {}, consent: tracking.consent === true,
+        customData: { content_name: 'Création de compte Prono Sport' },
+      });
+    }
+
     res.json({ token, user: { id: user.id, email: user.email, pseudo: user.pseudo, plan: user.plan } });
   } catch (err) {
     console.error('register error:', err.message);
