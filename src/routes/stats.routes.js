@@ -9,7 +9,7 @@ const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 // ─── GÉNÉRER UN PRONOSTIC IA POUR UN MATCH ────────────────────────────────────
 async function generatePronosticForMatch(match) {
   if (!OPENAI_KEY) return null;
-  const prompt = `Tu es un expert en pronostics football pour la Coupe du Monde 2026.
+  const prompt = `Tu es un expert en pronostics football pour Prono Sport.
 Analyse ce match et génère un pronostic précis.
 Match : ${match.equipe1} vs ${match.equipe2}
 Phase : ${match.phase || 'Phase de groupes'}
@@ -113,14 +113,13 @@ router.get('/', async (req, res) => {
       prono: { favori: row.favori, score_exact: row.score_exact }
     }));
 
-    // Si aucun pronostic généré, retourner les stats de référence
+    // Tant qu'aucun pronostic réel n'est disponible, ne jamais afficher de référence artificielle.
     if (withProno.length === 0) {
       return res.json({
+        available: false,
         totalMatches: rows.length,
         totalWithProno: 0,
-        bestCorrect: { pct: 60, label: 'sur toute la compétition', count: 44, total: 73 },
-        bestScoreExact: { pct: 11, label: 'sur toute la compétition', count: 8, total: 73 },
-        bestProche: { pct: 68, label: 'sur toute la compétition', count: 50, total: 73 },
+        message: 'Les statistiques de cette compétition seront disponibles après les premiers matchs analysés.',
       });
     }
 
@@ -174,6 +173,7 @@ router.get('/', async (req, res) => {
     const bestProche = selectBest(statsPerWindow, 'pctProche');
 
     res.json({
+      available: true,
       totalMatches: rows.length,
       totalWithProno: withProno.length,
       bestCorrect: {
