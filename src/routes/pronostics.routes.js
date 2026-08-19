@@ -12,7 +12,7 @@ const { resolveSeasonMatch } = require('../services/seasonMatchData');
 const { query: dbQuery } = require('../db');
 
 const PLAN_FEATURES = {
-  free:       { quota: 3, score_exact: false, analyse: false, live: false },
+  free:       { quota: 1, score_exact: false, analyse: false, live: false },
   ai_plus:    { quota: 999, score_exact: true, analyse: true, live: false },
   ai_premium: { quota: 999, score_exact: true, analyse: true, live: true },
 };
