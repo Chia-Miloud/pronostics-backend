@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../db');
 const { authRequired, JWT_SECRET } = require('../middleware/auth');
 
+const isDatabaseRecovery = (error) =>
+  error?.code === '57P03' || /database system is in recovery mode/i.test(error?.message || '');
+
 // ─── INSCRIPTION ──────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
@@ -29,6 +32,9 @@ router.post('/register', async (req, res) => {
     res.json({ token, user: { id: user.id, email: user.email, pseudo: user.pseudo, plan: user.plan } });
   } catch (err) {
     console.error('register error:', err.message);
+    if (isDatabaseRecovery(err)) {
+      return res.status(503).json({ error: 'Le service redémarre, réessayez dans quelques secondes.' });
+    }
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
@@ -52,6 +58,9 @@ router.post('/login', async (req, res) => {
     res.json({ token, user: { id: user.id, email: user.email, pseudo: user.pseudo, plan: user.plan } });
   } catch (err) {
     console.error('login error:', err.message);
+    if (isDatabaseRecovery(err)) {
+      return res.status(503).json({ error: 'Le service redémarre, réessayez dans quelques secondes.' });
+    }
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
