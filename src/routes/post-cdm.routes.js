@@ -40,7 +40,7 @@ function buildPromoEmail(user) {
       <div style="font-size: 14px; color: #94a3b8; margin-bottom: 16px;"><s style="color: #475569;">9,99€/mois</s> — Économisez 5€ le premier mois</div>
       <div style="font-size: 13px; color: #f1f5f9; margin-bottom: 16px;">
         ✅ Pronostics illimités · ✅ Score exact · ✅ Buteurs potentiels<br>
-        ✅ Cotes bookmakers · ✅ Live IA Coach en direct
+        ✅ Probabilités détaillées · ✅ Live IA Coach en direct
       </div>
       <div style="margin-bottom: 12px;">
         <span style="background: rgba(229,62,62,0.2); color: #e53e3e; border: 1px solid rgba(229,62,62,0.4); padding: 4px 12px; border-radius: 8px; font-weight: 900; font-size: 14px;">Code : CDM2026PREMIUM</span>

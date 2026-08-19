@@ -6,6 +6,7 @@ router.get('/config', (req, res) => {
   res.json({
     metaPixelId: process.env.META_PIXEL_ID || null,
     gaMeasurementId: process.env.GA_MEASUREMENT_ID || null,
+    metaDomainVerification: process.env.META_DOMAIN_VERIFICATION || null,
   });
 });
 

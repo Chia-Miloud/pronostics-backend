@@ -27,31 +27,31 @@ function emailJ1(user) {
   <!-- Header -->
   <div style="background: linear-gradient(135deg, #1a0a2e, #130d2a); padding: 32px 32px 24px; text-align: center; border-bottom: 2px solid #ff3b3b40;">
     <div style="font-size: 36px; margin-bottom: 8px;">⚽</div>
-    <h1 style="font-size: 22px; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">Prédictions IA · CDM 2026</h1>
-    <p style="color: #94a3b8; font-size: 13px; margin: 6px 0 0;">pronostics.coupedumonde.ai</p>
+    <h1 style="font-size: 22px; font-weight: 900; color: #fff; margin: 0; letter-spacing: -0.02em;">Prono Sport · Analyses sportives</h1>
+    <p style="color: #94a3b8; font-size: 13px; margin: 6px 0 0;">prono-sport.io</p>
   </div>
 
   <!-- Corps -->
   <div style="padding: 32px;">
     <p style="font-size: 16px; color: #f1f5f9; margin: 0 0 16px;">Bonjour ${prenom} 👋</p>
     <p style="font-size: 14px; color: #94a3b8; line-height: 1.7; margin: 0 0 20px;">
-      Tu t'es inscrit(e) hier sur <strong style="color: #fff;">pronostics.coupedumonde.ai</strong> — bienvenue dans la Coupe du Monde 2026 vue par l'IA !
+      Tu t'es inscrit(e) hier sur <strong style="color: #fff;">prono-sport.io</strong> — bienvenue dans notre espace d’analyses sportives assistées par IA.
     </p>
 
     <!-- Stat mise en avant -->
     <div style="background: linear-gradient(135deg, #1e1640, #130d2a); border: 1px solid #ffd70040; border-radius: 12px; padding: 20px; margin: 0 0 24px; text-align: center;">
       <div style="font-size: 11px; color: #ffd700; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">Taux de réussite</div>
       <div style="font-size: 42px; font-weight: 900; color: #ffd700;">73%</div>
-      <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">sur les matchs analysés de la CDM 2026</div>
+      <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">données et résultats vérifiés selon les compétitions disponibles</div>
     </div>
 
     <p style="font-size: 14px; color: #94a3b8; line-height: 1.7; margin: 0 0 24px;">
-      Tu as <strong style="color: #fff;">1 pronostic gratuit par jour</strong> — les matchs des quarts de finale approchent, c'est le moment de tester notre IA sur les meilleures affiches !
+      Tu as <strong style="color: #fff;">1 pronostic gratuit par jour</strong> — consulte les affiches à venir et découvre les analyses basées sur les données disponibles.
     </p>
 
     <!-- CTA -->
     <div style="text-align: center; margin: 28px 0;">
-      <a href="https://pronostics.coupedumonde.ai" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 900; font-size: 15px; letter-spacing: -0.01em;">
+      <a href="https://prono-sport.io" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 900; font-size: 15px; letter-spacing: -0.01em;">
         Voir les pronostics du jour →
       </a>
     </div>
@@ -75,8 +75,8 @@ function emailJ1(user) {
   <!-- Footer -->
   <div style="padding: 20px 32px; border-top: 1px solid rgba(255,255,255,0.07); text-align: center;">
     <p style="font-size: 11px; color: #475569; margin: 0;">
-      pronostics.coupedumonde.ai · <a href="https://pronostics.coupedumonde.ai/cgv" style="color: #475569;">CGV</a> · <a href="https://pronostics.coupedumonde.ai/rgpd" style="color: #475569;">Confidentialité</a><br>
-      ⚠️ Les pronostics sont fournis à titre informatif. Jouez de manière responsable.
+      prono-sport.io · <a href="https://prono-sport.io/cgv" style="color: #475569;">CGV</a> · <a href="https://prono-sport.io/rgpd" style="color: #475569;">Confidentialité</a><br>
+      ⚠️ Les analyses et projections sont fournies à titre informatif uniquement.
     </p>
   </div>
 </div>`
@@ -86,28 +86,28 @@ function emailJ1(user) {
 function emailJ3(user) {
   const prenom = user.prenom || 'passionné(e) de foot';
   return {
-    subject: `${prenom}, les quarts de finale arrivent — es-tu prêt(e) ? 🏆`,
+    subject: `${prenom}, les prochaines affiches sont disponibles ⚽`,
     html: `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0e1a; color: #f1f5f9; border-radius: 16px; overflow: hidden;">
   <!-- Header stade -->
   <div style="background: linear-gradient(180deg, #1a0a2e 0%, #130d2a 100%); padding: 32px; text-align: center; position: relative; border-bottom: 2px solid #ffd70040;">
     <div style="font-size: 40px; margin-bottom: 8px;">🏆</div>
-    <h1 style="font-size: 20px; font-weight: 900; color: #fff; margin: 0;">Les quarts de finale approchent</h1>
-    <p style="color: #ffd700; font-size: 13px; margin: 6px 0 0; font-weight: 700;">Coupe du Monde 2026</p>
+    <h1 style="font-size: 20px; font-weight: 900; color: #fff; margin: 0;">Les prochaines affiches arrivent</h1>
+    <p style="color: #ffd700; font-size: 13px; margin: 6px 0 0; font-weight: 700;">Saison 2026-2027</p>
   </div>
 
   <div style="padding: 32px;">
     <p style="font-size: 16px; color: #f1f5f9; margin: 0 0 16px;">Salut ${prenom} 👋</p>
     <p style="font-size: 14px; color: #94a3b8; line-height: 1.7; margin: 0 0 20px;">
-      Tu as utilisé ton pronostic gratuit — et tu sais maintenant comment fonctionne notre IA. Maintenant, les <strong style="color: #fff;">matchs décisifs</strong> arrivent.
+      Tu as utilisé ton pronostic gratuit et tu sais maintenant comment fonctionne notre IA. Les <strong style="color: #fff;">prochaines affiches</strong> sont disponibles à l’analyse.
     </p>
 
     <!-- Urgence -->
     <div style="background: linear-gradient(135deg, rgba(255,59,59,0.15), rgba(255,59,59,0.05)); border: 1px solid rgba(255,59,59,0.4); border-radius: 12px; padding: 20px; margin: 0 0 24px;">
-      <div style="font-size: 13px; font-weight: 900; color: #ff3b3b; margin-bottom: 8px;">⏰ Les quarts de finale — matchs à ne pas rater</div>
+      <div style="font-size: 13px; font-weight: 900; color: #ff3b3b; margin-bottom: 8px;">⏰ Les prochaines affiches à analyser</div>
       <div style="font-size: 13px; color: #94a3b8; line-height: 1.7;">
-        France · Brésil · Angleterre · Allemagne — les 4 favoris s'affrontent.<br>
-        Notre IA a analysé <strong style="color: #fff;">104 matchs</strong> pour prédire les résultats.
+        Retrouvez les grands championnats et les matchs à venir sélectionnés par Prono Sport.<br>
+        Notre IA s’appuie sur les données sportives disponibles pour proposer ses projections.
       </div>
     </div>
 
@@ -147,7 +147,7 @@ function emailJ3(user) {
 
     <!-- CTA principal -->
     <div style="text-align: center; margin: 28px 0;">
-      <a href="https://pronostics.coupedumonde.ai/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-weight: 900; font-size: 16px;">
+      <a href="https://prono-sport.io/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; text-decoration: none; padding: 16px 36px; border-radius: 12px; font-weight: 900; font-size: 16px;">
         Passer à AI Plus — 4,99€/mois →
       </a>
       <p style="font-size: 11px; color: #475569; margin: 10px 0 0;">Annulable à tout moment · Sans engagement</p>
@@ -156,7 +156,7 @@ function emailJ3(user) {
 
   <div style="padding: 20px 32px; border-top: 1px solid rgba(255,255,255,0.07); text-align: center;">
     <p style="font-size: 11px; color: #475569; margin: 0;">
-      pronostics.coupedumonde.ai · <a href="https://pronostics.coupedumonde.ai/cgv" style="color: #475569;">CGV</a> · <a href="https://pronostics.coupedumonde.ai/rgpd" style="color: #475569;">Confidentialité</a>
+      prono-sport.io · <a href="https://prono-sport.io/cgv" style="color: #475569;">CGV</a> · <a href="https://prono-sport.io/rgpd" style="color: #475569;">Confidentialité</a>
     </p>
   </div>
 </div>`

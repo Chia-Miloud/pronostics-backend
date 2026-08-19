@@ -37,7 +37,7 @@ async function fetchEditorialContext() {
   const date = now.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 
   if (!FOOTBALL_API_KEY) {
-    return `Date de référence : ${date}. La saison 2026-2027 reprend. Aucun calendrier officiel n'a pu être chargé : écrire un article de contexte sur la reprise de Ligue 1 ou des grands championnats, sans inventer de résultat, de transfert, de blessure ou de cote.`;
+    return `Date de référence : ${date}. La saison 2026-2027 reprend. Aucun calendrier officiel n'a pu être chargé : écrire un article de contexte sur la reprise de Ligue 1 ou des grands championnats, sans inventer de résultat, de transfert, de blessure ou de donnée chiffrée non vérifiée.`;
   }
 
   if (editorialContextCache && Date.now() - editorialContextCachedAt < 10 * 60 * 1000) {
@@ -90,12 +90,12 @@ async function fetchEditorialContext() {
 
 function buildArticlePrompt(contexte) {
   return {
-    system: `Tu es un journaliste football français, rigoureux et factuel. Tu écris pour Prono Sport, un média d'analyses et pronostics sportifs.
+    system: `Tu es un journaliste football français, rigoureux et factuel. Tu écris pour Prono Sport, un média d'analyses et de projections sportives. Le service ne propose aucun pari ni aucune mise.
 
 RÈGLES ABSOLUES :
 - Le sujet est l'actualité de la saison 2026-2027 : Ligue 1 en priorité, puis grands championnats européens et Ligue des champions.
 - Tu n'écris jamais sur la Coupe du monde 2026, sauf si le contexte fourni la mentionne explicitement et qu'elle est indispensable. Ici, elle ne l'est pas.
-- Tu utilises uniquement les informations vérifiables dans le contexte. N'invente ni transferts, ni blessés, ni absences, ni statistiques, ni cotes, ni résultats.
+- Tu utilises uniquement les informations vérifiables dans le contexte. N'invente ni transferts, ni blessés, ni absences, ni statistiques, ni résultats.
 - Si le contexte ne contient pas assez de données pour analyser un match, écris un article de préparation de saison ou de calendrier, sans chiffrage inventé.
 - Le texte ne dit jamais qu'il a été généré par une IA. L'auteur est « Équipe Rédaction ».
 

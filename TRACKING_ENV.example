@@ -1,0 +1,11 @@
+# Variables Clever Cloud — ne jamais les exposer au navigateur
+META_PIXEL_ID=
+META_CONVERSIONS_API_TOKEN=
+META_TEST_EVENT_CODE=
+GA_MEASUREMENT_ID=
+
+# Variable de build Netlify (jeton public de vérification de domaine Meta)
+# VITE_META_DOMAIN_VERIFICATION=
+
+# META_PIXEL_ID est la seule valeur renvoyée publiquement par /api/tracking/config.
+# META_CONVERSIONS_API_TOKEN reste exclusivement sur le serveur.

@@ -48,7 +48,7 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
               <br><span style="font-size: 11px; color: #475569;">${phase} · ${time}</span>
             </td>
             <td style="padding: 12px 16px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06);">
-              <a href="https://pronostics.coupedumonde.ai" style="background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap;">
+              <a href="https://prono-sport.io" style="background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; white-space: nowrap;">
                 ${isLive ? '🔴 En direct' : '⚽ Pronostic'}
               </a>
             </td>
@@ -67,10 +67,10 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
           Avec le plan <strong style="color: #ffd700;">AI Plus</strong>, tu reçois le pronostic mis à jour <em>avant tout le monde</em> — score exact inclus.
         </p>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-          <a href="https://pronostics.coupedumonde.ai/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-weight: 900; font-size: 13px;">
+          <a href="https://prono-sport.io/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-weight: 900; font-size: 13px;">
             🚀 AI Plus — 4,99€/mois
           </a>
-          <a href="https://pronostics.coupedumonde.ai/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-weight: 900; font-size: 13px;">
+          <a href="https://prono-sport.io/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 11px 22px; border-radius: 10px; font-weight: 900; font-size: 13px;">
             🧠 AI Premium + Live Coach — 9,99€/mois
           </a>
         </div>
@@ -83,7 +83,7 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
           Pendant les matchs en direct, pose tes questions à notre IA : <em>"Va-t-il y avoir un but ?"</em>, <em>"Quelle est la probabilité de prolongations ?"</em>...<br>
           Réponses instantanées avec chiffres et probabilités.
         </p>
-        <a href="https://pronostics.coupedumonde.ai/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 900; font-size: 13px;">
+        <a href="https://prono-sport.io/abonnement" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 10px; font-weight: 900; font-size: 13px;">
           Passer à AI Premium →
         </a>
       </div>`;
@@ -91,7 +91,7 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
 
   const subject = todayMatches.length > 0
     ? `⚽ ${todayMatches.length} match${todayMatches.length > 1 ? 's' : ''} ce soir — tes pronostics t'attendent`
-    : `⚽ Les prochains matchs CDM 2026 — prépare tes pronostics`;
+    : `⚽ Les prochaines analyses de matchs — retrouvez les affiches à venir`;
 
   const html = `
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0a0e1a; color: #f1f5f9; border-radius: 16px; overflow: hidden;">
@@ -99,9 +99,9 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
   <div style="background: linear-gradient(180deg, #1a0a2e 0%, #130d2a 100%); padding: 28px 32px 24px; border-bottom: 2px solid rgba(255,59,59,0.3);">
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
       <span style="font-size: 24px;">⚽</span>
-      <span style="font-size: 16px; font-weight: 900; color: #fff;">Prédictions IA · CDM 2026</span>
+      <span style="font-size: 16px; font-weight: 900; color: #fff;">Prono Sport · Analyses sportives</span>
     </div>
-    <p style="font-size: 12px; color: #94a3b8; margin: 0;">pronostics.coupedumonde.ai</p>
+    <p style="font-size: 12px; color: #94a3b8; margin: 0;">prono-sport.io</p>
   </div>
 
   <!-- Corps -->
@@ -126,7 +126,7 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
 
     <!-- CTA principal -->
     <div style="text-align: center; margin: 24px 0;">
-      <a href="https://pronostics.coupedumonde.ai" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-weight: 900; font-size: 15px; box-shadow: 0 4px 20px rgba(255,59,59,0.35);">
+      <a href="https://prono-sport.io" style="display: inline-block; background: linear-gradient(135deg, #ff3b3b, #c62828); color: #fff; text-decoration: none; padding: 14px 36px; border-radius: 12px; font-weight: 900; font-size: 15px; box-shadow: 0 4px 20px rgba(255,59,59,0.35);">
         Voir tous les pronostics →
       </a>
     </div>
@@ -154,8 +154,8 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
   <!-- Footer -->
   <div style="padding: 18px 32px; border-top: 1px solid rgba(255,255,255,0.06); text-align: center;">
     <p style="font-size: 11px; color: #475569; margin: 0;">
-      pronostics.coupedumonde.ai · <a href="https://pronostics.coupedumonde.ai/cgv" style="color: #475569;">CGV</a> · <a href="https://pronostics.coupedumonde.ai/rgpd" style="color: #475569;">Confidentialité</a><br>
-      ⚠️ Les pronostics sont fournis à titre informatif. Jouez de manière responsable.
+      prono-sport.io · <a href="https://prono-sport.io/cgv" style="color: #475569;">CGV</a> · <a href="https://prono-sport.io/rgpd" style="color: #475569;">Confidentialité</a><br>
+      ⚠️ Les analyses et projections sont fournies à titre informatif uniquement.
     </p>
   </div>
 </div>`;

@@ -76,7 +76,6 @@ ${realData}
 5. prob_p1 + prob_nul + prob_p2 = 100 exactement.
 6. score_confiance entre 52 et 85.
 7. L'analyse_texte doit s'appuyer uniquement sur les données disponibles (calendrier, forme, résultats, buts).
-8. Les cotes sont des cotes indicatives calculées à partir des probabilités ; ne jamais les présenter comme des cotes bookmakers observées.
 
 Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
 {
@@ -91,14 +90,7 @@ Réponds UNIQUEMENT avec ce JSON (sans texte avant ou après) :
   "raisons": ["<raison basée sur données réelles>", "<raison 2>", "<raison 3>"],
   "trap_score": <entier 0-100>,
   "trap_raison": "<risque principal>",
-    "buteurs_potentiels": [],
-  "cotes": {
-    "victoire_1": <cote indicative décimale pour ${match.equipe1}>,
-    "nul": <cote indicative décimale pour match nul>,
-    "victoire_2": <cote indicative décimale pour ${match.equipe2}>,
-    "score_exact": <cote indicative pour le score exact prédit>,
-    "source": "Estimation Prono Sport fondée sur les probabilités IA"
-  }
+  "buteurs_potentiels": []
 }`;
 
   const text = await callAI(prompt, 1200);
@@ -240,8 +232,8 @@ router.get('/:matchId', authOptional, async (req, res) => {
       prob_p1: pronosticData.prob_p1,
       prob_nul: pronosticData.prob_nul,
       prob_p2: pronosticData.prob_p2,
-      // Cotes disponibles pour tous (incite à l'abonnement)
-      cotes: pronosticData.cotes || null,
+      // Champ historique conservé pour compatibilité des réponses existantes, sans affichage public.
+      cotes: null,
       // Buteurs potentiels : 1 seul pour free, tous pour plus/premium
       buteurs: (() => {
         const b = pronosticData.buteurs || [];
