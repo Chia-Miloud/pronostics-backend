@@ -18,8 +18,10 @@ const PLANS = {
   },
 };
 
-const getFrontendUrl = () =>
-  (process.env.FRONTEND_URL || 'https://pronostics.coupedumonde.ai').split(',')[0].trim();
+const getFrontendUrl = () => {
+  const configured = (process.env.FRONTEND_URL || '').split(',').map(url => url.trim()).filter(Boolean);
+  return configured.find(url => url === 'https://prono-sport.io') || 'https://prono-sport.io';
+};
 
 // ─── POST /api/subscription/checkout ─────────────────────────────────────────
 router.post('/checkout', authRequired, async (req, res) => {

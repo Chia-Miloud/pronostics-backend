@@ -8,8 +8,13 @@ const app = express();
 const PORT = process.env.PORT || process.env.CC_APP_PORT || 8080;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = (process.env.FRONTEND_URL || 'https://pronostics.coupedumonde.ai')
-  .split(',').map(s => s.trim());
+const configuredOrigins = (process.env.FRONTEND_URL || '').split(',').map(s => s.trim()).filter(Boolean);
+const allowedOrigins = [...new Set([
+  'https://prono-sport.io',
+  'https://www.prono-sport.io',
+  'https://pronostics.coupedumonde.ai', // conservé pendant la redirection de transition
+  ...configuredOrigins,
+])];
 
 app.use(cors({
   origin: (origin, cb) => {
