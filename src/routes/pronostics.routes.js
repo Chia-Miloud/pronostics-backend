@@ -17,6 +17,18 @@ const PLAN_FEATURES = {
   ai_premium: { quota: 999, score_exact: true, analyse: true, live: true },
 };
 
+async function resolveMatchForFeature(matchId) {
+  if (String(matchId).includes('_')) {
+    const seasonData = await resolveSeasonMatch(matchId);
+    return seasonData.match;
+  }
+  const matchR = await query(
+    `SELECT id, equipe1, equipe2, statut, score_p1, score_p2, phase, competition AS competition_nom, date_heure
+     FROM matches WHERE id = $1`, [matchId]
+  );
+  return matchR.rows[0] || null;
+}
+
 // ─── APPEL IA GÉNÉRIQUE ───────────────────────────────────────────────────────
 async function callAI(prompt, maxTokens = 600) {
   if (!OPENAI_KEY) throw new Error('Service IA non configuré');
@@ -263,31 +275,25 @@ router.post('/live/:matchId/chat', authRequired, async (req, res) => {
     const { question } = req.body;
     if (!question) return res.status(400).json({ error: 'Question requise' });
 
-    // Récupérer le match
-    const matchR = await query(
-      `SELECT id, equipe1, equipe2, statut, score_p1, score_p2, phase, competition AS competition_nom, date_heure
-       FROM matches WHERE id = $1`, [matchId]
-    );
-    if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
-    const match = matchR.rows[0];
+    // Récupérer le match depuis la base historique ou le calendrier officiel de saison.
+    const match = await resolveMatchForFeature(matchId);
+    if (!match) return res.status(404).json({ error: 'Match introuvable' });
 
     const scoreInfo = match.score_p1 !== null
       ? `Score actuel : ${match.equipe1} ${match.score_p1}-${match.score_p2} ${match.equipe2}`
       : `Match pas encore commencé`;
 
-    const prompt = `Tu es le Live IA Coach pour la Coupe du Monde 2026.
-Tu analyses le match en temps réel et réponds aux questions des supporters.
+    const prompt = `Tu es le Live IA Coach de Prono Sport. Tu aides les supporters pendant les matchs de championnat et de coupe.
 
 Match : ${match.equipe1} vs ${match.equipe2}
-Phase : ${match.phase || 'Phase de groupes'}
+Compétition : ${match.competition_nom || 'Football'}
+Phase : ${match.phase || 'Saison régulière'}
 Statut : ${match.statut}
 ${scoreInfo}
 
 Question du supporter : "${question}"
 
-Réponds en 2-3 phrases maximum. Sois précis, chiffré et prédictif (pas descriptif).
-Donne une probabilité ou un chiffre concret dans ta réponse.
-Réponds en français.`;
+Réponds en 2-3 phrases maximum et en français. Base-toi exclusivement sur le score, le statut et les informations ci-dessus. Si une donnée (minute, carton, blessure, tireur) n'est pas fournie, indique clairement qu'elle n'est pas disponible au lieu de l'inventer. Tu peux proposer une lecture prudente de l'évolution du match, sans présenter de chiffre inventé comme une donnée réelle.`;
 
     const answer = await callAI(prompt, 200);
 
@@ -312,12 +318,8 @@ router.get('/live/:matchId/questions', authRequired, async (req, res) => {
     }
 
     const { matchId } = req.params;
-    const matchR = await query(
-      `SELECT id, equipe1, equipe2, statut, score_p1, score_p2, phase FROM matches WHERE id = $1`,
-      [matchId]
-    );
-    if (!matchR.rows.length) return res.status(404).json({ error: 'Match introuvable' });
-    const match = matchR.rows[0];
+    const match = await resolveMatchForFeature(matchId);
+    if (!match) return res.status(404).json({ error: 'Match introuvable' });
 
     const scoreInfo = match.score_p1 !== null
       ? `Score : ${match.equipe1} ${match.score_p1}-${match.score_p2} ${match.equipe2}`
