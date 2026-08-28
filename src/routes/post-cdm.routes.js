@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
   host: 'pro2.mail.ovh.net', port: 587, secure: false,
-  auth: { user: 'contact@coupedumonde.ai', pass: process.env.SMTP_PASSWORD || 'LoudMoud33/-' },
+  auth: { user: 'contact@coupedumonde.ai', pass: process.env.SMTP_PASSWORD },
   tls: { rejectUnauthorized: false },
 });
 

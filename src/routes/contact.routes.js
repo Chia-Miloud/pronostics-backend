@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   secure: false,
   auth: {
     user: 'contact@coupedumonde.ai',
-    pass: process.env.SMTP_PASSWORD || 'LoudMoud33/-',
+    pass: process.env.SMTP_PASSWORD,
   },
   tls: { rejectUnauthorized: false },
 });
