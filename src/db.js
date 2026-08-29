@@ -1,12 +1,20 @@
 const { Pool } = require('pg');
+const { databaseUrl, pgSslRejectUnauthorized } = require('./config/env');
+const { runMigrations } = require('./migrations');
 
-// Clever Cloud utilise des certificats auto-signés — on doit désactiver la vérification
-// NODE_TLS_REJECT_UNAUTHORIZED=0 est la solution la plus fiable pour Clever Cloud
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+const parsedDatabaseUrl = new URL(databaseUrl);
+const configuredSslMode = parsedDatabaseUrl.searchParams.get('sslmode');
+parsedDatabaseUrl.searchParams.delete('sslmode');
+parsedDatabaseUrl.searchParams.delete('sslrootcert');
+
+const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(parsedDatabaseUrl.hostname);
+const sslEnabled = process.env.PG_SSL === 'true'
+  || (process.env.PG_SSL !== 'false' && configuredSslMode !== 'disable' && !isLocalDatabase);
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 5,              // max 5 connexions simultanées (Clever Cloud limite à 10)
+  connectionString: parsedDatabaseUrl.toString(),
+  ssl: sslEnabled ? { rejectUnauthorized: pgSslRejectUnauthorized } : false,
+  max: 5,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
 });
@@ -14,114 +22,8 @@ const pool = new Pool({
 const query = (text, params) => pool.query(text, params);
 
 const initDB = async () => {
-  await query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      pseudo TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      prenom TEXT,
-      nom TEXT,
-      telephone TEXT,
-      plan TEXT DEFAULT 'free',
-      stripe_customer_id TEXT,
-      stripe_subscription_id TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS matches (
-      id SERIAL PRIMARY KEY,
-      external_id TEXT UNIQUE,
-      equipe1 TEXT NOT NULL,
-      equipe2 TEXT NOT NULL,
-      logo1 TEXT,
-      logo2 TEXT,
-      date_heure TIMESTAMPTZ NOT NULL,
-      phase TEXT,
-      competition TEXT DEFAULT 'Coupe du Monde 2026',
-      statut TEXT DEFAULT 'SCHEDULED',
-      score_p1 INTEGER,
-      score_p2 INTEGER,
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS pronostics (
-      id SERIAL PRIMARY KEY,
-      match_id INTEGER REFERENCES matches(id),
-      user_id INTEGER REFERENCES users(id),
-      favori TEXT,
-      score_confiance INTEGER,
-      niveau_confiance TEXT,
-      prob_p1 INTEGER,
-      prob_nul INTEGER,
-      prob_p2 INTEGER,
-      score_exact TEXT,
-      analyse_texte TEXT,
-      raisons JSONB,
-      trap_score INTEGER,
-      trap_raison TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-
-  // Les matchs des championnats sont identifiés par une clé externe composée
-  // (ex. 2015_559715) et ne figurent pas nécessairement dans la table historique CDM.
-  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS external_match_id TEXT`);
-  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS buteurs JSONB`);
-  await query(`ALTER TABLE pronostics ADD COLUMN IF NOT EXISTS cotes JSONB`);
-  await query(`CREATE INDEX IF NOT EXISTS idx_pronostics_external_match_id ON pronostics(external_match_id)`);
-
-  // Attribution consentie et journal des conversions pour la déduplication Meta/GA4.
-  await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS attribution JSONB`);
-  await query(`
-    CREATE TABLE IF NOT EXISTS conversion_events (
-      event_id TEXT PRIMARY KEY,
-      event_name TEXT NOT NULL,
-      user_id INTEGER REFERENCES users(id),
-      stripe_session_id TEXT,
-      payload JSONB,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await query(`
-    CREATE TABLE IF NOT EXISTS page_views (
-      id SERIAL PRIMARY KEY,
-      session_id TEXT NOT NULL,
-      page TEXT NOT NULL,
-      referrer TEXT,
-      user_agent TEXT,
-      user_id INTEGER REFERENCES users(id),
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
-  await query(`ALTER TABLE page_views ADD COLUMN IF NOT EXISTS attribution JSONB`);
-
-  await query(`
-    CREATE TABLE IF NOT EXISTS articles (
-      id SERIAL PRIMARY KEY,
-      titre TEXT NOT NULL,
-      slug TEXT UNIQUE NOT NULL,
-      resume TEXT,
-      contenu TEXT NOT NULL,
-      categorie TEXT DEFAULT 'analyse',
-      tags TEXT[],
-      image_url TEXT,
-      auteur TEXT DEFAULT 'IA Coach',
-      publie BOOLEAN DEFAULT false,
-      vues INTEGER DEFAULT 0,
-      social_fb TEXT,
-      social_insta TEXT,
-      social_tiktok TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      published_at TIMESTAMPTZ
-    )
-  `);
-
-  console.log('✅ Base de données initialisée');
+  await runMigrations(pool);
+  console.log('✅ Base de données initialisée et migrations vérifiées');
 };
 
 module.exports = { query, pool, initDB };

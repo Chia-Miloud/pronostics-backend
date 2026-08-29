@@ -38,15 +38,14 @@ function emailJ1(user) {
       Tu t'es inscrit(e) hier sur <strong style="color: #fff;">prono-sport.io</strong> — bienvenue dans notre espace d’analyses sportives assistées par IA.
     </p>
 
-    <!-- Stat mise en avant -->
-    <div style="background: linear-gradient(135deg, #1e1640, #130d2a); border: 1px solid #ffd70040; border-radius: 12px; padding: 20px; margin: 0 0 24px; text-align: center;">
-      <div style="font-size: 11px; color: #ffd700; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 6px;">Taux de réussite</div>
-      <div style="font-size: 42px; font-weight: 900; color: #ffd700;">73%</div>
-      <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">données et résultats vérifiés selon les compétitions disponibles</div>
+    <!-- Historique vérifié -->
+    <div style="background: linear-gradient(135deg, #1e1640, #130d2a); border: 1px solid #4f8ef740; border-radius: 12px; padding: 20px; margin: 0 0 24px; text-align: center;">
+      <div style="font-size: 14px; color: #f1f5f9; font-weight: 800; margin-bottom: 6px;">Historique de performance en cours de constitution</div>
+      <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Le bilan public utilisera uniquement les analyses enregistrées avant le coup d’envoi.</div>
     </div>
 
     <p style="font-size: 14px; color: #94a3b8; line-height: 1.7; margin: 0 0 24px;">
-      Tu as <strong style="color: #fff;">1 pronostic gratuit par jour</strong> — consulte les affiches à venir et découvre les analyses basées sur les données disponibles.
+      Tu as <strong style="color: #fff;">3 analyses de matchs distincts gratuites par jour</strong> — une réouverture du même match le même jour ne consomme pas de crédit supplémentaire.
     </p>
 
     <!-- CTA -->

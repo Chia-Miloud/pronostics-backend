@@ -1,7 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { query } = require('../db');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'pronostics_secret_key_2026';
+const { jwtSecret: JWT_SECRET } = require('../config/env');
 
 const authRequired = async (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');

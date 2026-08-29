@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../db');
 const { authRequired, JWT_SECRET } = require('../middleware/auth');
 const { sendMetaEvent } = require('../services/metaCapi');
+const { getDailyQuota } = require('../services/quota');
 
 const isDatabaseRecovery = (error) =>
   error?.code === '57P03' || /database system is in recovery mode/i.test(error?.message || '');
@@ -11,23 +12,35 @@ const isDatabaseRecovery = (error) =>
 // ─── INSCRIPTION ──────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, prenom, nom, telephone, tracking = {} } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email et mot de passe requis' });
+    const { email, pseudo, password, prenom, nom, telephone, tracking = {} } = req.body;
+    if (!email || !pseudo || !password) {
+      return res.status(400).json({ error: 'Email, pseudonyme et mot de passe requis' });
+    }
     if (password.length < 8) return res.status(400).json({ error: 'Mot de passe trop court (8 caractères min)' });
 
-    const existing = await query('SELECT id FROM users WHERE email = $1', [email.toLowerCase()]);
-    if (existing.rows.length) return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedPseudo = String(pseudo).trim().toLowerCase();
+    if (!/^[\p{L}\p{N}._-]{3,20}$/u.test(normalizedPseudo)) {
+      return res.status(400).json({ error: 'Le pseudonyme doit contenir 3 à 20 lettres, chiffres, points, tirets ou underscores.' });
+    }
 
-    const pseudo = (prenom && nom)
-      ? `${prenom}${nom}`.replace(/\s/g, '').toLowerCase().slice(0, 20)
-      : email.split('@')[0].slice(0, 20);
+    const existing = await query(
+      'SELECT email, pseudo FROM users WHERE email = $1 OR pseudo = $2',
+      [normalizedEmail, normalizedPseudo]
+    );
+    if (existing.rows.some(row => row.email === normalizedEmail)) {
+      return res.status(409).json({ error: 'Cet email est déjà utilisé' });
+    }
+    if (existing.rows.some(row => row.pseudo === normalizedPseudo)) {
+      return res.status(409).json({ error: 'Ce pseudonyme est déjà utilisé' });
+    }
 
     const password_hash = await bcrypt.hash(password, 12);
     const r = await query(
       `INSERT INTO users (email, pseudo, password_hash, prenom, nom, telephone, attribution)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, pseudo, plan`,
       [
-        email.toLowerCase(), pseudo, password_hash, prenom || null, nom || null, telephone || null,
+        normalizedEmail, normalizedPseudo, password_hash, prenom || null, nom || null, telephone || null,
         tracking?.consent ? JSON.stringify(tracking.attribution || {}) : null,
       ]
     );
@@ -56,6 +69,9 @@ router.post('/register', async (req, res) => {
     console.error('register error:', err.message);
     if (isDatabaseRecovery(err)) {
       return res.status(503).json({ error: 'Le service redémarre, réessayez dans quelques secondes.' });
+    }
+    if (err?.code === '23505') {
+      return res.status(409).json({ error: 'Cet email ou ce pseudonyme est déjà utilisé' });
     }
     res.status(500).json({ error: 'Erreur serveur' });
   }
@@ -90,7 +106,6 @@ router.post('/login', async (req, res) => {
 // ─── PROFIL ───────────────────────────────────────────────────────────────────
 router.get('/me', authRequired, async (req, res) => {
   try {
-    const today = new Date().toISOString().slice(0, 10);
     // Recharger le profil complet depuis la BDD (pas juste le token JWT)
     const userR = await query(
       'SELECT id, email, pseudo, prenom, nom, telephone, plan, created_at FROM users WHERE id = $1',
@@ -98,14 +113,10 @@ router.get('/me', authRequired, async (req, res) => {
     );
     if (!userR.rows.length) return res.status(404).json({ error: 'Utilisateur introuvable' });
     const fullUser = userR.rows[0];
-    const quotaR = await query(
-      `SELECT COUNT(*) FROM pronostics WHERE user_id = $1 AND DATE(created_at) = $2`,
-      [req.user.id, today]
-    );
-    res.json({
-      user: fullUser,
-      quota: { used: parseInt(quotaR.rows[0].count), limit: fullUser.plan === 'free' ? 1 : 999 }
-    });
+    const quota = fullUser.plan === 'free'
+      ? await getDailyQuota(req.user.id)
+      : { used: 0, limit: 999, remaining: 999, unlimited: true };
+    res.json({ user: fullUser, quota });
   } catch (err) {
     res.status(500).json({ error: 'Erreur serveur' });
   }

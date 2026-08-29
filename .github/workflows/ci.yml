@@ -1,0 +1,57 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: prono_test
+          POSTGRES_PASSWORD: prono_test_password
+          POSTGRES_DB: prono_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U prono_test -d prono_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://prono_test:prono_test_password@127.0.0.1:5432/prono_test?sslmode=disable
+      TEST_DATABASE_URL: postgresql://prono_test:prono_test_password@127.0.0.1:5432/prono_test?sslmode=disable
+      JWT_SECRET: ci-test-secret-with-at-least-thirty-two-characters
+      PG_SSL: "false"
+
+    steps:
+      - name: Récupérer le dépôt
+        uses: actions/checkout@v4
+
+      - name: Configurer Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier la syntaxe et les tests unitaires
+        run: npm run check
+
+      - name: Vérifier les migrations PostgreSQL
+        run: npm run test:migrations
+
+      - name: Auditer les vulnérabilités élevées ou critiques
+        run: npm audit --omit=dev --audit-level=high

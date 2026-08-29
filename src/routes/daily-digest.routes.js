@@ -134,20 +134,10 @@ function buildDailyEmail(user, todayMatches, tomorrowMatches) {
     <!-- Bloc upgrade -->
     ${upgradeBlock}
 
-    <!-- Stats rapides -->
-    <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap;">
-      <div style="flex: 1; min-width: 120px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 12px; text-align: center;">
-        <div style="font-size: 22px; font-weight: 900; color: #ffd700;">73%</div>
-        <div style="font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em;">Taux de réussite</div>
-      </div>
-      <div style="flex: 1; min-width: 120px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 12px; text-align: center;">
-        <div style="font-size: 22px; font-weight: 900; color: #4f8ef7;">104</div>
-        <div style="font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em;">Matchs analysés</div>
-      </div>
-      <div style="flex: 1; min-width: 120px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 12px; text-align: center;">
-        <div style="font-size: 22px; font-weight: 900; color: #00e676;">IA</div>
-        <div style="font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 0.06em;">Données temps réel</div>
-      </div>
+    <!-- Méthodologie du bilan -->
+    <div style="background: rgba(79,142,247,0.08); border: 1px solid rgba(79,142,247,0.25); border-radius: 10px; padding: 14px 16px; margin-top: 20px; text-align: center;">
+      <div style="font-size: 13px; font-weight: 800; color: #f1f5f9; margin-bottom: 4px;">Historique de performance en cours de constitution</div>
+      <div style="font-size: 11px; color: #94a3b8; line-height: 1.6;">Seules les analyses enregistrées avant le coup d’envoi seront intégrées au futur bilan vérifié.</div>
     </div>
   </div>
 

@@ -2,6 +2,7 @@ const router = require('express').Router();
 const axios = require('axios');
 const { query } = require('../db');
 const { authRequired, authOptional } = require('../middleware/auth');
+const { getFreeAccessStatus, claimFreeAccess, FREE_DAILY_QUOTA } = require('../services/quota');
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_BASE = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
@@ -9,10 +10,9 @@ const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
 const { collectMatchData, formatDataForPrompt } = require('../services/footballData');
 const { resolveSeasonMatch } = require('../services/seasonMatchData');
-const { query: dbQuery } = require('../db');
 
 const PLAN_FEATURES = {
-  free:       { quota: 1, score_exact: false, analyse: false, live: false },
+  free:       { quota: FREE_DAILY_QUOTA, score_exact: false, analyse: false, live: false },
   ai_plus:    { quota: 999, score_exact: true, analyse: true, live: false },
   ai_premium: { quota: 999, score_exact: true, analyse: true, live: true },
 };
@@ -119,9 +119,10 @@ router.get('/results', async (req, res) => {
       FROM pronostics p
       JOIN matches m ON p.match_id = m.id
       WHERE p.user_id IS NULL
+        AND p.created_at < m.date_heure
         AND m.statut = 'FINISHED'
         AND m.score_p1 IS NOT NULL
-      ORDER BY p.match_id, p.created_at DESC
+      ORDER BY p.match_id, p.created_at ASC
     `);
     // Retourner un objet { matchId: { favori, ... } }
     const result = {};
@@ -146,22 +147,10 @@ router.get('/:matchId', authOptional, async (req, res) => {
   try {
     const { matchId } = req.params;
     const user = req.user;
-    const plan = user?.plan || 'free';
-    const features = PLAN_FEATURES[plan] || PLAN_FEATURES.free;
-
-    // Vérifier quota pour free
-    if (plan === 'free' && user) {
-      const today = new Date().toISOString().slice(0, 10);
-      const qr = await query(
-        `SELECT COUNT(*) FROM pronostics WHERE user_id = $1 AND DATE(created_at) = $2`,
-        [user.id, today]
-      );
-      if (parseInt(qr.rows[0].count) >= features.quota) {
-        return res.status(429).json({ error: 'Quota journalier atteint', upgrade: true });
-      }
-    }
-
     if (!user) return res.status(401).json({ error: 'Connexion requise' });
+
+    const plan = user.plan || 'free';
+    const features = PLAN_FEATURES[plan] || PLAN_FEATURES.free;
 
     const isSeasonMatch = String(matchId).includes('_');
     let match;
@@ -189,6 +178,22 @@ router.get('/:matchId', authOptional, async (req, res) => {
       allMatches = allMatchesR.rows;
     }
 
+    const matchKey = isSeasonMatch ? `external:${externalMatchId}` : `match:${storageMatchId}`;
+    if (plan === 'free') {
+      const accessStatus = await getFreeAccessStatus(user.id, matchKey);
+      if (!accessStatus.allowed) {
+        return res.status(429).json({
+          error: 'Quota journalier atteint',
+          upgrade: true,
+          quota: {
+            used: accessStatus.used,
+            limit: accessStatus.limit,
+            remaining: accessStatus.remaining,
+          },
+        });
+      }
+    }
+
     const cacheField = isSeasonMatch ? 'external_match_id' : 'match_id';
     const cacheValue = isSeasonMatch ? externalMatchId : storageMatchId;
     const existing = await query(
@@ -214,14 +219,26 @@ router.get('/:matchId', authOptional, async (req, res) => {
       pronosticData = saved.rows[0];
     }
 
-    // Enregistrer la consommation du quota (uniquement pour les utilisateurs Free).
+    let quota = null;
     if (plan === 'free') {
-      await query(
-        `INSERT INTO pronostics (match_id, external_match_id, user_id, favori, score_confiance, niveau_confiance, prob_p1, prob_nul, prob_p2)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [storageMatchId, externalMatchId, user.id, pronosticData.favori, pronosticData.score_confiance,
-         pronosticData.niveau_confiance, pronosticData.prob_p1, pronosticData.prob_nul, pronosticData.prob_p2]
-      );
+      const claim = await claimFreeAccess(user.id, matchKey);
+      if (!claim.allowed) {
+        return res.status(429).json({
+          error: 'Quota journalier atteint',
+          upgrade: true,
+          quota: {
+            used: claim.used,
+            limit: claim.limit,
+            remaining: claim.remaining,
+          },
+        });
+      }
+      quota = {
+        used: claim.used,
+        limit: claim.limit,
+        remaining: claim.remaining,
+        counted: claim.counted,
+      };
     }
 
     // Filtrer selon le plan
@@ -246,6 +263,7 @@ router.get('/:matchId', authOptional, async (req, res) => {
       result.analyse_texte = pronosticData.analyse_texte;
       result.raisons = pronosticData.raisons;
     }
+    if (quota) result.quota = quota;
 
     res.json(result);
   } catch (err) {
